@@ -60,6 +60,7 @@ func (m *MemStorage) saveMetrics(res http.ResponseWriter, req *http.Request) {
 			res.WriteHeader(http.StatusBadRequest)
 		}
 		m.counter[nameMetric] += incrementValue
+		fmt.Println(m.counter[nameMetric], nameMetric, incrementValue)
 	}
 	if typeMetric == "gauge" {
 		incrementValue, err := strconv.ParseFloat(valueMetric, 64)
@@ -68,6 +69,6 @@ func (m *MemStorage) saveMetrics(res http.ResponseWriter, req *http.Request) {
 		}
 		m.gauge[nameMetric] = incrementValue
 	}
-	fmt.Println(m)
+
 	res.WriteHeader(http.StatusOK)
 }
