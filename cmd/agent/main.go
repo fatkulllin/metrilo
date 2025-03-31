@@ -45,7 +45,6 @@ func main() {
 			}
 			for k, v := range metrics.Counter {
 				endpoint = fmt.Sprintf("http://localhost:8080/update/counter/%v/%v", k, v)
-				fmt.Println("Send Request counter metrics")
 				sendRequest(c, http.MethodPost, endpoint, jsonMetrics)
 			}
 		}
