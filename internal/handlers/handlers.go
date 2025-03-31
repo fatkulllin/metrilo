@@ -34,6 +34,7 @@ func SaveMetrics(res http.ResponseWriter, req *http.Request) {
 		incrementValue, err := strconv.ParseInt(valueMetric, 10, 64)
 		if err != nil {
 			res.WriteHeader(http.StatusBadRequest)
+			return
 		}
 		memStorage.AddCounter(nameMetric, incrementValue)
 		// storage.AddCounter(nameMetric, incrementValue)
@@ -42,6 +43,7 @@ func SaveMetrics(res http.ResponseWriter, req *http.Request) {
 		floatValue, err := strconv.ParseFloat(valueMetric, 64)
 		if err != nil {
 			res.WriteHeader(http.StatusBadRequest)
+			return
 		}
 		// fmt.Println(incrementValue)
 		memStorage.SetGauge(nameMetric, floatValue)
