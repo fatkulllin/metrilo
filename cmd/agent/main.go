@@ -57,7 +57,7 @@ func main() {
 }
 
 func checkServer(client *http.Client, endpoint string) bool {
-	_, statusCode := sendRequest(client, http.MethodPost, endpoint)
+	_, statusCode := sendRequest(client, http.MethodGet, endpoint)
 	return statusCode == http.StatusOK
 }
 
@@ -67,7 +67,7 @@ func sendRequest(client *http.Client, method string, endpoint string) ([]byte, i
 	if err != nil {
 		log.Fatalf("Error Occurred. %+v", err)
 	}
-	req.Header.Add("Content-Type", "text/plain")
+	// req.Header.Add("Content-Type", "text/plain")
 
 	response, err := client.Do(req)
 	if err != nil {
