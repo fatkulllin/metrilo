@@ -2,14 +2,13 @@ package main
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"io"
 	"log"
-	"math/rand"
 	"net/http"
-	"runtime"
 	"time"
+
+	"github.com/fatkulllin/metrilo/internal/metrics"
 )
 
 func httpClient() *http.Client {
@@ -18,9 +17,7 @@ func httpClient() *http.Client {
 }
 
 func main() {
-	metrics := &Metrcics{}
-	metrics.Gauge = make(map[string]float64, 27)
-	metrics.Counter = make(map[string]int64)
+	metrics := metrics.NewMetrics()
 	pollInterval := time.NewTicker(time.Duration(2) * time.Second)
 	reportInterval := time.NewTicker(time.Duration(3) * time.Second)
 	// lastSendMetricsTime := time.Now().Second()
@@ -33,28 +30,24 @@ func main() {
 	for {
 		select {
 		case <-pollInterval.C:
-			metrics.collectMetrics()
+			metrics.CollectMetrics()
 		case <-reportInterval.C:
-			jsonMetrics, err := json.Marshal(*metrics)
-			if err != nil {
-				log.Fatalf("Error parse json metrics. %+v", err)
-			}
 			for k, v := range metrics.Gauge {
 				endpoint = fmt.Sprintf("http://localhost:8080/update/gauge/%v/%v", k, v)
-				sendRequest(c, http.MethodPost, endpoint, jsonMetrics)
+				sendRequest(c, http.MethodPost, endpoint)
 			}
 			for k, v := range metrics.Counter {
 				endpoint = fmt.Sprintf("http://localhost:8080/update/counter/%v/%v", k, v)
-				sendRequest(c, http.MethodPost, endpoint, jsonMetrics)
+				sendRequest(c, http.MethodPost, endpoint)
 			}
 		}
 
 	}
 }
 
-func sendRequest(client *http.Client, method string, endpoint string, jsonData []byte) []byte {
+func sendRequest(client *http.Client, method string, endpoint string) []byte {
 
-	req, err := http.NewRequest(method, endpoint, bytes.NewBuffer(jsonData))
+	req, err := http.NewRequest(method, endpoint, bytes.NewBuffer([]byte{}))
 	if err != nil {
 		log.Fatalf("Error Occurred. %+v", err)
 	}
@@ -78,42 +71,4 @@ func sendRequest(client *http.Client, method string, endpoint string, jsonData [
 	}
 
 	return body
-}
-
-type Metrcics struct {
-	Gauge   map[string]float64
-	Counter map[string]int64
-}
-
-func (metrics *Metrcics) collectMetrics() {
-
-	memstats := runtime.MemStats{}
-	runtime.ReadMemStats(&memstats)
-	metrics.Gauge["Alloc"] = float64(memstats.Alloc)
-	metrics.Gauge["BuckHashSys"] = float64(memstats.BuckHashSys)
-	metrics.Gauge["Frees"] = float64(memstats.Frees)
-	metrics.Gauge["GCCPUFraction"] = memstats.GCCPUFraction
-	metrics.Gauge["GCSys"] = float64(memstats.GCSys)
-	metrics.Gauge["HeapAlloc"] = float64(memstats.HeapAlloc)
-	metrics.Gauge["HeapIdle"] = float64(memstats.HeapIdle)
-	metrics.Gauge["HeapInuse"] = float64(memstats.HeapInuse)
-	metrics.Gauge["HeapObjects"] = float64(memstats.HeapObjects)
-	metrics.Gauge["HeapReleased"] = float64(memstats.HeapReleased)
-	metrics.Gauge["HeapSys"] = float64(memstats.HeapSys)
-	metrics.Gauge["LastGC"] = float64(memstats.LastGC)
-	metrics.Gauge["Lookups"] = float64(memstats.Lookups)
-	metrics.Gauge["MCacheInuse"] = float64(memstats.MCacheInuse)
-	metrics.Gauge["MSpanSys"] = float64(memstats.MSpanSys)
-	metrics.Gauge["Mallocs"] = float64(memstats.Mallocs)
-	metrics.Gauge["NextGC"] = float64(memstats.NextGC)
-	metrics.Gauge["NumForcedGC"] = float64(memstats.NumForcedGC)
-	metrics.Gauge["NumGC"] = float64(memstats.NumGC)
-	metrics.Gauge["OtherSys"] = float64(memstats.OtherSys)
-	metrics.Gauge["PauseTotalNs"] = float64(memstats.PauseTotalNs)
-	metrics.Gauge["StackInuse"] = float64(memstats.StackInuse)
-	metrics.Gauge["StackSys"] = float64(memstats.StackSys)
-	metrics.Gauge["Sys"] = float64(memstats.Sys)
-	metrics.Gauge["TotalAlloc"] = float64(memstats.TotalAlloc)
-	metrics.Gauge["RandomValue"] = rand.Float64()
-	metrics.Counter["PollCount"] += 1
 }
