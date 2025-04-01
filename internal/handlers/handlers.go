@@ -3,7 +3,6 @@ package handlers
 import (
 	"net/http"
 	"strconv"
-	"strings"
 
 	"github.com/fatkulllin/metrilo/internal/storage"
 )
@@ -52,10 +51,6 @@ func SaveMetrics(res http.ResponseWriter, req *http.Request) {
 		// 	res.WriteHeader(http.StatusBadRequest)
 		// 	return
 		// }
-		if !strings.Contains(valueMetric, ".") {
-			res.WriteHeader(http.StatusBadRequest)
-			return
-		}
 		floatValue, err := strconv.ParseFloat(valueMetric, 64)
 		if err != nil {
 			res.WriteHeader(http.StatusBadRequest)
