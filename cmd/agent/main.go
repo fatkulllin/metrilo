@@ -7,7 +7,6 @@ import (
 	"log"
 	"net"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/fatkulllin/metrilo/internal/metrics"
@@ -56,22 +55,46 @@ func main() {
 	}
 }
 func checkConnection() {
-	httpRequest := "GET / HTTP/1.1\n" +
-		"Host: localhost\n\n"
-	conn, err := net.Dial("tcp", "localhost:8080")
+	// Указываем адрес сервера
+	server := "localhost:8080"
+
+	// Подключаемся к серверу по TCP
+	conn, err := net.Dial("tcp", server)
 	if err != nil {
-		log.Fatalf("%v", err)
+		fmt.Println("Ошибка подключения:", err)
 		return
 	}
 	defer conn.Close()
 
-	if _, err = conn.Write([]byte(httpRequest)); err != nil {
-		log.Fatalf("%v", err)
+	// Формируем тело запроса
+	body := "param1=value1&param2=value2"
+
+	// Формируем HTTP-запрос вручную
+	request := fmt.Sprintf("POST / HTTP/1.1\r\n"+
+		"Host: example.com\r\n"+
+		"Content-Type: application/x-www-form-urlencoded\r\n"+
+		"Content-Length: %d\r\n"+
+		"Connection: close\r\n\r\n"+
+		"%s", len(body), body)
+
+	// Отправляем запрос
+	_, err = conn.Write([]byte(request))
+	if err != nil {
+		fmt.Println("Ошибка отправки запроса:", err)
 		return
 	}
 
-	io.Copy(os.Stdout, conn)
-	fmt.Println("Done")
+	// Читаем ответ сервера
+	buf := make([]byte, 4096)
+	n, err := conn.Read(buf)
+	if err != nil {
+		fmt.Println("Ошибка чтения ответа:", err)
+		return
+	}
+
+	// Выводим ответ
+	fmt.Println("Ответ сервера:")
+	fmt.Println(string(buf[:n]))
 }
 
 func sendRequest(client *http.Client, method string, endpoint string) ([]byte, int) {
