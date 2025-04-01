@@ -32,6 +32,9 @@ func main() {
 		case <-pollInterval.C:
 			metrics.CollectMetrics()
 		case <-reportInterval.C:
+			if !checkServer(c, "http://localhost:8080") {
+				log.Fatalf("Server not run")
+			}
 			go func() {
 				fmt.Println("Send Gauge type")
 				for k, v := range metrics.Gauge {
@@ -53,7 +56,12 @@ func main() {
 	}
 }
 
-func sendRequest(client *http.Client, method string, endpoint string) []byte {
+func checkServer(client *http.Client, endpoint string) bool {
+	_, statusCode := sendRequest(client, http.MethodPost, endpoint)
+	return statusCode == http.StatusOK
+}
+
+func sendRequest(client *http.Client, method string, endpoint string) ([]byte, int) {
 
 	req, err := http.NewRequest(method, endpoint, bytes.NewBuffer([]byte{}))
 	if err != nil {
@@ -78,5 +86,5 @@ func sendRequest(client *http.Client, method string, endpoint string) []byte {
 		log.Fatalf("Request failed with status: %s", response.Status)
 	}
 
-	return body
+	return body, response.StatusCode
 }
