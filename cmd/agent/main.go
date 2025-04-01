@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"net"
 	"net/http"
 	"time"
 
@@ -20,7 +19,7 @@ func httpClient() *http.Client {
 func main() {
 	metrics := metrics.NewMetrics()
 	pollInterval := time.NewTicker(time.Duration(2) * time.Second)
-	reportInterval := time.NewTicker(time.Duration(3) * time.Second)
+	reportInterval := time.NewTicker(time.Duration(10) * time.Second)
 	// lastSendMetricsTime := time.Now().Second()
 	endpoint := ""
 	c := httpClient()
@@ -33,7 +32,6 @@ func main() {
 		case <-pollInterval.C:
 			metrics.CollectMetrics()
 		case <-reportInterval.C:
-			checkConnection()
 			go func() {
 				fmt.Println("Send Gauge type")
 				for k, v := range metrics.Gauge {
@@ -53,48 +51,6 @@ func main() {
 		}
 
 	}
-}
-func checkConnection() {
-	// Указываем адрес сервера
-	server := "localhost:8080"
-
-	// Подключаемся к серверу по TCP
-	conn, err := net.Dial("tcp", server)
-	if err != nil {
-		fmt.Println("Ошибка подключения:", err)
-		return
-	}
-	defer conn.Close()
-
-	// Формируем тело запроса
-	body := "param1=value1&param2=value2"
-
-	// Формируем HTTP-запрос вручную
-	request := fmt.Sprintf("POST / HTTP/1.1\r\n"+
-		"Host: example.com\r\n"+
-		"Content-Type: application/x-www-form-urlencoded\r\n"+
-		"Content-Length: %d\r\n"+
-		"Connection: close\r\n\r\n"+
-		"%s", len(body), body)
-
-	// Отправляем запрос
-	_, err = conn.Write([]byte(request))
-	if err != nil {
-		fmt.Println("Ошибка отправки запроса:", err)
-		return
-	}
-
-	// Читаем ответ сервера
-	buf := make([]byte, 4096)
-	n, err := conn.Read(buf)
-	if err != nil {
-		fmt.Println("Ошибка чтения ответа:", err)
-		return
-	}
-
-	// Выводим ответ
-	fmt.Println("Ответ сервера:")
-	fmt.Println(string(buf[:n]))
 }
 
 func sendRequest(client *http.Client, method string, endpoint string) ([]byte, int) {
