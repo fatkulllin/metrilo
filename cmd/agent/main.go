@@ -2,10 +2,12 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
+	"net/http/httptrace"
 	"time"
 
 	"github.com/fatkulllin/metrilo/internal/metrics"
@@ -32,9 +34,6 @@ func main() {
 		case <-pollInterval.C:
 			metrics.CollectMetrics()
 		case <-reportInterval.C:
-			if !checkServer(c, "http://localhost:8080") {
-				log.Fatalf("Server not run")
-			}
 			go func() {
 				fmt.Println("Send Gauge type")
 				for k, v := range metrics.Gauge {
@@ -56,19 +55,47 @@ func main() {
 	}
 }
 
-func checkServer(client *http.Client, endpoint string) bool {
-	_, statusCode := sendRequest(client, http.MethodGet, endpoint)
-	return statusCode == http.StatusOK
-}
-
 func sendRequest(client *http.Client, method string, endpoint string) ([]byte, int) {
 
 	req, err := http.NewRequest(method, endpoint, bytes.NewBuffer([]byte{}))
 	if err != nil {
 		log.Fatalf("Error Occurred. %+v", err)
 	}
-	// req.Header.Add("Content-Type", "text/plain")
+	req.Header.Add("Content-Type", "text/plain")
+	// Добавляем HTTP-трассировку
+	trace := &httptrace.ClientTrace{
+		GetConn: func(hostPort string) {
+			log.Printf("Получение соединения с: %s", hostPort)
+		},
+		GotConn: func(info httptrace.GotConnInfo) {
+			log.Printf("Используем соединение: %+v", info)
+		},
+		DNSStart: func(info httptrace.DNSStartInfo) {
+			log.Printf("Запрос DNS для: %s", info.Host)
+		},
+		DNSDone: func(info httptrace.DNSDoneInfo) {
+			log.Printf("Результат DNS-запроса: %+v", info)
+		},
+		ConnectStart: func(network, addr string) {
+			log.Printf("Подключение к: %s %s", network, addr)
+		},
+		ConnectDone: func(network, addr string, err error) {
+			if err != nil {
+				log.Printf("Ошибка подключения к %s %s: %v", network, addr, err)
+			} else {
+				log.Printf("Подключение установлено к: %s %s", network, addr)
+			}
+		},
+		WroteRequest: func(info httptrace.WroteRequestInfo) {
+			log.Println("Запрос отправлен")
+		},
+		GotFirstResponseByte: func() {
+			log.Println("Получен первый байт ответа")
+		},
+	}
 
+	// Встраиваем трассировку в контекст запроса
+	req = req.WithContext(httptrace.WithClientTrace(context.Background(), trace))
 	response, err := client.Do(req)
 	if err != nil {
 		log.Fatalf("Error sending request to API endpoint. %+v", err)
@@ -85,6 +112,6 @@ func sendRequest(client *http.Client, method string, endpoint string) ([]byte, i
 	if response.StatusCode != http.StatusOK {
 		log.Fatalf("Request failed with status: %s", response.Status)
 	}
-
+	fmt.Printf("Тело ответа: %s\n", body)
 	return body, response.StatusCode
 }
