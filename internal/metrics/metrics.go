@@ -40,48 +40,48 @@ const (
 	PollCount     = "PollCount"
 )
 
-var allowedGaugeMetrics = map[string]struct{}{
-	Alloc:         {},
-	BuckHashSys:   {},
-	Frees:         {},
-	GCCPUFraction: {},
-	GCSys:         {},
-	HeapAlloc:     {},
-	HeapIdle:      {},
-	HeapInuse:     {},
-	HeapObjects:   {},
-	HeapReleased:  {},
-	HeapSys:       {},
-	LastGC:        {},
-	Lookups:       {},
-	MCacheInuse:   {},
-	MSpanSys:      {},
-	Mallocs:       {},
-	NextGC:        {},
-	NumForcedGC:   {},
-	NumGC:         {},
-	OtherSys:      {},
-	PauseTotalNs:  {},
-	StackInuse:    {},
-	StackSys:      {},
-	Sys:           {},
-	TotalAlloc:    {},
-}
+// var allowedGaugeMetrics = map[string]struct{}{
+// 	Alloc:         {},
+// 	BuckHashSys:   {},
+// 	Frees:         {},
+// 	GCCPUFraction: {},
+// 	GCSys:         {},
+// 	HeapAlloc:     {},
+// 	HeapIdle:      {},
+// 	HeapInuse:     {},
+// 	HeapObjects:   {},
+// 	HeapReleased:  {},
+// 	HeapSys:       {},
+// 	LastGC:        {},
+// 	Lookups:       {},
+// 	MCacheInuse:   {},
+// 	MSpanSys:      {},
+// 	Mallocs:       {},
+// 	NextGC:        {},
+// 	NumForcedGC:   {},
+// 	NumGC:         {},
+// 	OtherSys:      {},
+// 	PauseTotalNs:  {},
+// 	StackInuse:    {},
+// 	StackSys:      {},
+// 	Sys:           {},
+// 	TotalAlloc:    {},
+// }
 
-var allowedCounterMetrics = map[string]struct{}{
-	RandomValue: {},
-	PollCount:   {},
-}
+// var allowedCounterMetrics = map[string]struct{}{
+// 	RandomValue: {},
+// 	PollCount:   {},
+// }
 
-func IsMetricGaugeAllowed(metricsName string) bool {
-	_, exists := allowedGaugeMetrics[metricsName]
-	return exists
-}
+// func IsMetricGaugeAllowed(metricsName string) bool {
+// 	_, exists := allowedGaugeMetrics[metricsName]
+// 	return exists
+// }
 
-func IsMetricCounterAllowed(metricsName string) bool {
-	_, exists := allowedCounterMetrics[metricsName]
-	return exists
-}
+// func IsMetricCounterAllowed(metricsName string) bool {
+// 	_, exists := allowedCounterMetrics[metricsName]
+// 	return exists
+// }
 
 func NewMetrics() *Metrics {
 	return &Metrics{

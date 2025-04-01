@@ -4,7 +4,6 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/fatkulllin/metrilo/internal/metrics"
 	"github.com/fatkulllin/metrilo/internal/storage"
 )
 
@@ -34,10 +33,10 @@ func SaveMetrics(res http.ResponseWriter, req *http.Request) {
 	}
 
 	if typeMetric == "counter" {
-		if !metrics.IsMetricCounterAllowed(nameMetric) {
-			res.WriteHeader(http.StatusBadRequest)
-			return
-		}
+		// if !metrics.IsMetricCounterAllowed(nameMetric) {
+		// 	res.WriteHeader(http.StatusBadRequest)
+		// 	return
+		// }
 		incrementValue, err := strconv.ParseInt(valueMetric, 10, 64)
 		if err != nil {
 			res.WriteHeader(http.StatusBadRequest)
@@ -48,10 +47,10 @@ func SaveMetrics(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 	if typeMetric == "gauge" {
-		if !metrics.IsMetricGaugeAllowed(nameMetric) {
-			res.WriteHeader(http.StatusBadRequest)
-			return
-		}
+		// if !metrics.IsMetricGaugeAllowed(nameMetric) {
+		// 	res.WriteHeader(http.StatusBadRequest)
+		// 	return
+		// }
 		floatValue, err := strconv.ParseFloat(valueMetric, 64)
 		if err != nil {
 			res.WriteHeader(http.StatusBadRequest)
