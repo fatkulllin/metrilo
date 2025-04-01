@@ -32,8 +32,8 @@ func main() {
 		case <-pollInterval.C:
 			metrics.CollectMetrics()
 		case <-reportInterval.C:
+			fmt.Println("Send metrics")
 			go func() {
-				fmt.Println("Send Gauge type")
 				for k, v := range metrics.Gauge {
 					fmt.Printf("Send Gauge type http://localhost:8080/update/gauge/%v/%v\n", k, v)
 					endpoint = fmt.Sprintf("http://localhost:8080/update/gauge/%v/%v", k, v)
@@ -41,7 +41,6 @@ func main() {
 				}
 			}()
 			go func() {
-				fmt.Println("Send Counter type")
 				for k, v := range metrics.Counter {
 					fmt.Printf("Send Counter type http://localhost:8080/update/counter/%v/%v\n", k, v)
 					endpoint = fmt.Sprintf("http://localhost:8080/update/counter/%v/%v", k, v)
