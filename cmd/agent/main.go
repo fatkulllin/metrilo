@@ -11,8 +11,8 @@ import (
 	"github.com/fatkulllin/metrilo/internal/metrics"
 )
 
-func httpClient() *http.Client {
-	client := &http.Client{Timeout: 10 * time.Second}
+func HttpClient() *http.Client {
+	client := &http.Client{}
 	return client
 }
 
@@ -22,7 +22,7 @@ func main() {
 	reportInterval := time.NewTicker(time.Duration(10) * time.Second)
 	// lastSendMetricsTime := time.Now().Second()
 	endpoint := ""
-	c := httpClient()
+	c := HttpClient()
 
 	defer pollInterval.Stop()
 	defer reportInterval.Stop()
@@ -37,14 +37,14 @@ func main() {
 				for k, v := range metrics.Gauge {
 					fmt.Printf("Send Gauge type http://localhost:8080/update/gauge/%v/%v\n", k, v)
 					endpoint = fmt.Sprintf("http://localhost:8080/update/gauge/%v/%v", k, v)
-					sendRequest(c, http.MethodPost, endpoint)
+					SendRequest(c, http.MethodPost, endpoint)
 				}
 			}()
 			go func() {
 				for k, v := range metrics.Counter {
 					fmt.Printf("Send Counter type http://localhost:8080/update/counter/%v/%v\n", k, v)
 					endpoint = fmt.Sprintf("http://localhost:8080/update/counter/%v/%v", k, v)
-					sendRequest(c, http.MethodPost, endpoint)
+					SendRequest(c, http.MethodPost, endpoint)
 				}
 			}()
 		}
@@ -52,7 +52,7 @@ func main() {
 	}
 }
 
-func sendRequest(client *http.Client, method string, endpoint string) ([]byte, int) {
+func SendRequest(client *http.Client, method string, endpoint string) ([]byte, int) {
 
 	req, err := http.NewRequest(method, endpoint, bytes.NewBuffer([]byte{}))
 	if err != nil {

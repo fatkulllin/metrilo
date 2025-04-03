@@ -10,6 +10,7 @@ import (
 var memStorage = storage.NewMemoryStorage()
 
 func SaveMetrics(res http.ResponseWriter, req *http.Request) {
+	res.Header().Set("Content-Type", "text/plain")
 	if req.Method != http.MethodPost {
 		http.Error(res, "Only POST requests are allowed!!", http.StatusMethodNotAllowed)
 		return
@@ -18,6 +19,7 @@ func SaveMetrics(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, "Only Content-Type: text/plain header are allowed!!", http.StatusMethodNotAllowed)
 		return
 	}
+
 	typeMetric := req.PathValue("type")
 	nameMetric := req.PathValue("name")
 	valueMetric := req.PathValue("value")
@@ -26,7 +28,6 @@ func SaveMetrics(res http.ResponseWriter, req *http.Request) {
 		res.WriteHeader(http.StatusNotFound)
 		return
 	}
-
 	if typeMetric != "gauge" && typeMetric != "counter" {
 		res.WriteHeader(http.StatusBadRequest)
 		return
@@ -44,7 +45,6 @@ func SaveMetrics(res http.ResponseWriter, req *http.Request) {
 		}
 		memStorage.AddCounter(nameMetric, incrementValue)
 		// storage.AddCounter(nameMetric, incrementValue)
-		return
 	}
 	if typeMetric == "gauge" {
 		// if !metrics.IsMetricGaugeAllowed(nameMetric) {
@@ -60,9 +60,7 @@ func SaveMetrics(res http.ResponseWriter, req *http.Request) {
 		// fmt.Println(incrementValue)
 		memStorage.SetGauge(nameMetric, floatValue)
 		// m.Gauge[nameMetric] = incrementValue
-		return
 	}
 
 	res.WriteHeader(http.StatusOK)
-
 }
