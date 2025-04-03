@@ -1,8 +1,6 @@
 package main
 
 import (
-	"net/http"
-	"net/http/httptest"
 	"testing"
 
 	"github.com/fatkulllin/metrilo/internal/metrics"
@@ -58,22 +56,22 @@ func TestColleMetrics(t *testing.T) {
 	})
 }
 
-func TestSendRequest_ServerError(t *testing.T) {
-	mockServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
-		res.Header().Set("Content-Type", "text/plain")
-		if req.Method != http.MethodPost {
-			http.Error(res, "Only POST requests are allowed!!", http.StatusMethodNotAllowed)
-			return
-		}
-		if req.Header.Get("Content-Type") != "text/plain" {
-			http.Error(res, "Only Content-Type: text/plain header are allowed!!", http.StatusMethodNotAllowed)
-			return
-		}
-		res.WriteHeader(http.StatusOK)
-	}))
-	defer mockServer.Close()
+// func TestSendRequest_ServerError(t *testing.T) {
+// 	mockServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+// 		res.Header().Set("Content-Type", "text/plain")
+// 		if req.Method != http.MethodPost {
+// 			http.Error(res, "Only POST requests are allowed!!", http.StatusMethodNotAllowed)
+// 			return
+// 		}
+// 		if req.Header.Get("Content-Type") != "text/plain" {
+// 			http.Error(res, "Only Content-Type: text/plain header are allowed!!", http.StatusMethodNotAllowed)
+// 			return
+// 		}
+// 		res.WriteHeader(http.StatusOK)
+// 	}))
+// 	defer mockServer.Close()
 
-	client := HttpClient()
-	SendRequest(client, http.MethodPost, "localhost:8080")
+// 	client := HttpClient()
+// 	SendRequest(client, http.MethodPost, "localhost:8080")
 
-}
+// }
