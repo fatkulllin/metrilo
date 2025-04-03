@@ -1,10 +1,13 @@
 package handlers
 
 import (
+	"fmt"
+	"io"
 	"net/http"
 	"strconv"
 
 	"github.com/fatkulllin/metrilo/internal/storage"
+	"github.com/go-chi/chi"
 )
 
 var memStorage = storage.NewMemoryStorage()
@@ -19,11 +22,9 @@ func SaveMetrics(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, "Only Content-Type: text/plain header are allowed!!", http.StatusMethodNotAllowed)
 		return
 	}
-
-	typeMetric := req.PathValue("type")
-	nameMetric := req.PathValue("name")
-	valueMetric := req.PathValue("value")
-
+	typeMetric := chi.URLParam(req, "type")
+	nameMetric := chi.URLParam(req, "name")
+	valueMetric := chi.URLParam(req, "value")
 	if typeMetric == "" || nameMetric == "" || valueMetric == "" {
 		res.WriteHeader(http.StatusNotFound)
 		return
@@ -63,4 +64,77 @@ func SaveMetrics(res http.ResponseWriter, req *http.Request) {
 	}
 
 	res.WriteHeader(http.StatusOK)
+}
+
+func GetMetric(res http.ResponseWriter, req *http.Request) {
+	res.Header().Set("Content-Type", "text/plain")
+	if req.Method != http.MethodGet {
+		http.Error(res, "Only GET requests are allowed!!", http.StatusMethodNotAllowed)
+		return
+	}
+	if req.Header.Get("Content-Type") != "text/plain" {
+		http.Error(res, "Only Content-Type: text/plain header are allowed!!", http.StatusMethodNotAllowed)
+		return
+	}
+	typeMetric := chi.URLParam(req, "type")
+	nameMetric := chi.URLParam(req, "name")
+	if typeMetric == "" || nameMetric == "" {
+		res.WriteHeader(http.StatusNotFound)
+		return
+	}
+	if typeMetric != "gauge" && typeMetric != "counter" {
+		res.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	if typeMetric == "counter" {
+		// if !metrics.IsMetricCounterAllowed(nameMetric) {
+		// 	res.WriteHeader(http.StatusBadRequest)
+		// 	return
+		// }
+		result, err := memStorage.GetCounter(nameMetric)
+		if err != nil {
+			res.WriteHeader(http.StatusNotFound)
+			return
+		}
+		io.WriteString(res, strconv.FormatInt(result, 10))
+		// storage.AddCounter(nameMetric, incrementValue)
+	}
+	if typeMetric == "gauge" {
+		// if !metrics.IsMetricGaugeAllowed(nameMetric) {
+		// 	res.WriteHeader(http.StatusBadRequest)
+		// 	return
+		// }
+		// fmt.Println(floatValue)
+		// fmt.Println(incrementValue)
+		result, err := memStorage.GetGauge(nameMetric)
+		if err != nil {
+			res.WriteHeader(http.StatusNotFound)
+			return
+		}
+		io.WriteString(res, strconv.FormatFloat(result, 'f', 2, 64))
+		// m.Gauge[nameMetric] = incrementValue
+	}
+
+	res.WriteHeader(http.StatusOK)
+}
+
+func AllGetMetrics(res http.ResponseWriter, req *http.Request) {
+	res.Header().Set("Content-Type", "text/html")
+	if req.Method != http.MethodGet {
+		http.Error(res, "Only GET requests are allowed!!", http.StatusMethodNotAllowed)
+		return
+	}
+	if req.Header.Get("Content-Type") != "text/plain" {
+		http.Error(res, "Only Content-Type: text/plain header are allowed!!", http.StatusMethodNotAllowed)
+		return
+	}
+	fmt.Fprintln(res, "<ul>")
+	for k, v := range memStorage.Counter {
+		fmt.Fprintf(res, "<li>%s: %.v</li>\n", k, v)
+	}
+	for k, v := range memStorage.Gauge {
+		fmt.Fprintf(res, "<li>%s: %v</li>\n", k, v)
+	}
+	fmt.Fprintln(res, "</ul>")
 }
