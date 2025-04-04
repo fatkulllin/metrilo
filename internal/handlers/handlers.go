@@ -28,11 +28,10 @@ func SaveMetrics(res http.ResponseWriter, req *http.Request) {
 	}
 	fmt.Println(req.Header)
 
-	fmt.Println(req)
 	typeMetric := chi.URLParam(req, "type")
 	nameMetric := chi.URLParam(req, "name")
 	valueMetric := chi.URLParam(req, "value")
-	if !isLetter(nameMetric) {
+	if isLetter(nameMetric) {
 		if req.Header.Get("Content-Type") != "text/plain" {
 			http.Error(res, "Only Content-Type: text/plain header are allowed!!", http.StatusMethodNotAllowed)
 			return
@@ -129,7 +128,7 @@ func GetMetric(res http.ResponseWriter, req *http.Request) {
 			res.WriteHeader(http.StatusNotFound)
 			return
 		}
-		io.WriteString(res, strconv.FormatFloat(result, 'f', 2, 64))
+		io.WriteString(res, strconv.FormatFloat(result, 'f', -1, 64))
 		// m.Gauge[nameMetric] = incrementValue
 	}
 
