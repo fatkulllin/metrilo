@@ -53,6 +53,7 @@ func TestRouter(t *testing.T) {
 	}
 	for _, v := range testTable {
 		resp, getBody := testRequest(t, ts, v.method, v.url, v.headers)
+		defer resp.Body.Close()
 		assert.Equal(t, v.status, resp.StatusCode)
 		assert.Equal(t, v.want, getBody)
 	}
