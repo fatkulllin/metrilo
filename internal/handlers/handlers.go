@@ -27,18 +27,17 @@ func SaveMetrics(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 	fmt.Println(req.Header)
-	// if req.Header.Get("Content-Type") != "text/plain" {
-	// 	http.Error(res, "Only Content-Type: text/plain header are allowed!!", http.StatusMethodNotAllowed)
-	// 	return
-	// }
+
 	fmt.Println(req)
 	typeMetric := chi.URLParam(req, "type")
 	nameMetric := chi.URLParam(req, "name")
 	valueMetric := chi.URLParam(req, "value")
-	// if !isLetter(nameMetric) {
-	// 	res.WriteHeader(http.StatusMethodNotAllowed)
-	// 	return
-	// }
+	if !isLetter(nameMetric) {
+		if req.Header.Get("Content-Type") != "text/plain" {
+			http.Error(res, "Only Content-Type: text/plain header are allowed!!", http.StatusMethodNotAllowed)
+			return
+		}
+	}
 	if typeMetric == "" || nameMetric == "" || valueMetric == "" {
 		res.WriteHeader(http.StatusNotFound)
 		return
