@@ -8,11 +8,15 @@ import (
 	"github.com/go-chi/chi"
 )
 
-type Server struct{}
+type Server struct {
+	Address *string
+}
 
-func NewServer() *Server {
+func NewServer(address *string) *Server {
 	fmt.Println("Initializing server...")
-	return &Server{}
+	return &Server{
+		Address: address,
+	}
 }
 
 func (server *Server) Router() *chi.Mux {
@@ -24,6 +28,6 @@ func (server *Server) Router() *chi.Mux {
 }
 
 func (server *Server) Start() {
-	fmt.Println("Start server...")
-	http.ListenAndServe(":8080", server.Router())
+	fmt.Printf("Start server on %s...", *server.Address)
+	http.ListenAndServe(*server.Address, server.Router())
 }

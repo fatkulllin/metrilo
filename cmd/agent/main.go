@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/fatkulllin/metrilo/internal/metrics"
+	"github.com/spf13/pflag"
 )
 
 func HTTPClient() *http.Client {
@@ -16,10 +17,37 @@ func HTTPClient() *http.Client {
 	return client
 }
 
+type Agent struct {
+	ServerAddress  *string
+	ReportInterval *int
+	PollInterval   *int
+}
+
+func (agent *Agent) initFlags() {
+	address := pflag.StringP("address", "a", "localhost:8080", "server address")
+	reportInterval := pflag.IntP("reportInterval", "r", 10, "frequency send")
+	pollInterval := pflag.IntP("pollInterval", "p", 2, "refresh metric")
+
+	pflag.Parse()
+	fmt.Println("Server Address:", *address)
+	fmt.Println("Report Interval:", *reportInterval)
+	fmt.Println("Poll Interval:", *pollInterval)
+	agent.ServerAddress = address
+	agent.ReportInterval = reportInterval
+	agent.PollInterval = pollInterval
+}
+func NewAgent() *Agent {
+	fmt.Println("Initializing Agent...")
+	agent := &Agent{}
+	agent.initFlags()
+	return agent
+}
+
 func main() {
+	agent := NewAgent()
 	metrics := metrics.NewMetrics()
-	pollInterval := time.NewTicker(time.Duration(2) * time.Second)
-	reportInterval := time.NewTicker(time.Duration(10) * time.Second)
+	pollInterval := time.NewTicker(time.Duration(*agent.PollInterval) * time.Second)
+	reportInterval := time.NewTicker(time.Duration(*agent.ReportInterval) * time.Second)
 	// lastSendMetricsTime := time.Now().Second()
 	endpoint := ""
 	c := HTTPClient()
