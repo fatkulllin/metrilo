@@ -11,7 +11,7 @@ import (
 	"github.com/fatkulllin/metrilo/internal/metrics"
 )
 
-func HttpClient() *http.Client {
+func HTTPClient() *http.Client {
 	client := &http.Client{}
 	return client
 }
@@ -22,7 +22,7 @@ func main() {
 	reportInterval := time.NewTicker(time.Duration(10) * time.Second)
 	// lastSendMetricsTime := time.Now().Second()
 	endpoint := ""
-	c := HttpClient()
+	c := HTTPClient()
 
 	defer pollInterval.Stop()
 	defer reportInterval.Stop()
