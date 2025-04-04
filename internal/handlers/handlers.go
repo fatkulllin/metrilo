@@ -26,10 +26,12 @@ func SaveMetrics(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, "Only POST requests are allowed!!", http.StatusMethodNotAllowed)
 		return
 	}
-	if req.Header.Get("Content-Type") != "text/plain" {
-		http.Error(res, "Only Content-Type: text/plain header are allowed!!", http.StatusMethodNotAllowed)
-		return
-	}
+	fmt.Println(req.Header)
+	// if req.Header.Get("Content-Type") != "text/plain" {
+	// 	http.Error(res, "Only Content-Type: text/plain header are allowed!!", http.StatusMethodNotAllowed)
+	// 	return
+	// }
+	fmt.Println(req)
 	typeMetric := chi.URLParam(req, "type")
 	nameMetric := chi.URLParam(req, "name")
 	valueMetric := chi.URLParam(req, "value")
@@ -84,10 +86,10 @@ func GetMetric(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, "Only GET requests are allowed!!", http.StatusMethodNotAllowed)
 		return
 	}
-	if req.Header.Get("Content-Type") != "text/plain" {
-		http.Error(res, "Only Content-Type: text/plain header are allowed!!", http.StatusMethodNotAllowed)
-		return
-	}
+	// if req.Header.Get("Content-Type") != "text/plain" {
+	// 	http.Error(res, "Only Content-Type: text/plain header are allowed!!", http.StatusMethodNotAllowed)
+	// 	return
+	// }
 	typeMetric := chi.URLParam(req, "type")
 	nameMetric := chi.URLParam(req, "name")
 	// if !isLetter(nameMetric) {
