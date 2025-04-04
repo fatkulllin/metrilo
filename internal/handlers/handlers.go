@@ -5,12 +5,20 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
+	"unicode"
 
 	"github.com/fatkulllin/metrilo/internal/storage"
 	"github.com/go-chi/chi"
 )
 
 var memStorage = storage.NewMemoryStorage()
+
+func isLetter(s string) bool {
+	return !strings.ContainsFunc(s, func(r rune) bool {
+		return !unicode.IsLetter(r)
+	})
+}
 
 func SaveMetrics(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", "text/plain")
@@ -25,6 +33,10 @@ func SaveMetrics(res http.ResponseWriter, req *http.Request) {
 	typeMetric := chi.URLParam(req, "type")
 	nameMetric := chi.URLParam(req, "name")
 	valueMetric := chi.URLParam(req, "value")
+	if !isLetter(nameMetric) {
+		res.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
 	if typeMetric == "" || nameMetric == "" || valueMetric == "" {
 		res.WriteHeader(http.StatusNotFound)
 		return
