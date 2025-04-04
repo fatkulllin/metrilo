@@ -90,6 +90,10 @@ func GetMetric(res http.ResponseWriter, req *http.Request) {
 	}
 	typeMetric := chi.URLParam(req, "type")
 	nameMetric := chi.URLParam(req, "name")
+	if !isLetter(nameMetric) {
+		res.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
 	if typeMetric == "" || nameMetric == "" {
 		res.WriteHeader(http.StatusNotFound)
 		return
