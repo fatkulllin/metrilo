@@ -32,8 +32,7 @@ func testRequest(t *testing.T, ts *httptest.Server, method,
 	return resp, string(respBody)
 }
 func TestRouter(t *testing.T) {
-	address := "localhost:8080"
-	server := server.NewServer(&address)
+	server := server.NewServer()
 	router := server.Router()
 	ts := httptest.NewServer(router)
 	defer ts.Close()
