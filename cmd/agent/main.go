@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/caarlos0/env"
 	"github.com/fatkulllin/metrilo/internal/metrics"
 	"github.com/spf13/pflag"
 )
@@ -18,24 +19,43 @@ func HTTPClient() *http.Client {
 }
 
 type Agent struct {
-	ServerAddress  *string
-	ReportInterval *int
-	PollInterval   *int
+	ServerAddress  string `env:"ADDRESS"`
+	ReportInterval int    `env:"REPORT_INTERVAL"`
+	PollInterval   int    `env:"POLL_INTERVAL"`
 }
 
 func (agent *Agent) initFlags() {
-	address := pflag.StringP("address", "a", "localhost:8080", "server address")
-	reportInterval := pflag.IntP("reportInterval", "r", 10, "frequency send")
-	pollInterval := pflag.IntP("pollInterval", "p", 2, "refresh metric")
+	var config ConfigENV
+	err := env.Parse(&config)
+	if err != nil {
+		log.Fatalf("Error parsing environment variables:%v", err)
+	}
+	if config.PollInterval != 0 {
+		agent.PollInterval = config.PollInterval
+	} else {
+		pollInterval := pflag.IntP("pollInterval", "p", 2, "refresh metric")
+		agent.PollInterval = *pollInterval
+	}
+	if config.ReportInterval != 0 {
+		agent.ReportInterval = config.ReportInterval
+	} else {
+		reportInterval := pflag.IntP("reportInterval", "r", 10, "frequency send")
+		agent.ReportInterval = *reportInterval
+	}
+	if config.ServerAddress != "" {
+		agent.ServerAddress = config.ServerAddress
+	} else {
+		address := pflag.StringP("address", "a", "localhost:8080", "server address")
+		agent.ServerAddress = *address
+	}
 
 	pflag.Parse()
-	fmt.Println("Server Address:", *address)
-	fmt.Println("Report Interval:", *reportInterval)
-	fmt.Println("Poll Interval:", *pollInterval)
-	agent.ServerAddress = address
-	agent.ReportInterval = reportInterval
-	agent.PollInterval = pollInterval
+	fmt.Println("Server Address:", agent.ServerAddress)
+	fmt.Println("Report Interval:", agent.ReportInterval)
+	fmt.Println("Poll Interval:", agent.PollInterval)
+
 }
+
 func NewAgent() *Agent {
 	fmt.Println("Initializing Agent...")
 	agent := &Agent{}
@@ -43,11 +63,17 @@ func NewAgent() *Agent {
 	return agent
 }
 
+type ConfigENV struct {
+	ServerAddress  string `env:"ADDRESS"`
+	ReportInterval int    `env:"REPORT_INTERVAL"`
+	PollInterval   int    `env:"POLL_INTERVAL"`
+}
+
 func main() {
 	agent := NewAgent()
 	metrics := metrics.NewMetrics()
-	pollInterval := time.NewTicker(time.Duration(*agent.PollInterval) * time.Second)
-	reportInterval := time.NewTicker(time.Duration(*agent.ReportInterval) * time.Second)
+	pollInterval := time.NewTicker(time.Duration(agent.PollInterval) * time.Second)
+	reportInterval := time.NewTicker(time.Duration(agent.ReportInterval) * time.Second)
 	endpoint := ""
 	c := HTTPClient()
 
@@ -62,15 +88,15 @@ func main() {
 			fmt.Println("Send metrics")
 			go func() {
 				for k, v := range metrics.Gauge {
-					fmt.Printf("Send Gauge type http://%v/update/gauge/%v/%v\n", *agent.ServerAddress, k, v)
-					endpoint = fmt.Sprintf("http://%v/update/gauge/%v/%v", *agent.ServerAddress, k, v)
+					fmt.Printf("Send Gauge type http://%v/update/gauge/%v/%v\n", agent.ServerAddress, k, v)
+					endpoint = fmt.Sprintf("http://%v/update/gauge/%v/%v", agent.ServerAddress, k, v)
 					SendRequest(c, http.MethodPost, endpoint)
 				}
 			}()
 			go func() {
 				for k, v := range metrics.Counter {
-					fmt.Printf("Send Gauge type http://%v/update/counter/%v/%v\n", *agent.ServerAddress, k, v)
-					endpoint = fmt.Sprintf("http://%v/update/counter/%v/%v", *agent.ServerAddress, k, v)
+					fmt.Printf("Send Gauge type http://%v/update/counter/%v/%v\n", agent.ServerAddress, k, v)
+					endpoint = fmt.Sprintf("http://%v/update/counter/%v/%v", agent.ServerAddress, k, v)
 					SendRequest(c, http.MethodPost, endpoint)
 				}
 			}()

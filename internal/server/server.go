@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/caarlos0/env"
 	"github.com/fatkulllin/metrilo/internal/handlers"
 	"github.com/go-chi/chi"
 	"github.com/spf13/pflag"
@@ -62,12 +63,25 @@ func (server *Server) Router() *chi.Mux {
 	return r
 }
 
+type ConfigENV struct {
+	Address string `env:"ADDRESS"`
+}
+
 func (server *Server) Start() {
-	pflag.VarP(&server.Address, "address", "a", "localhost:8080")
-	pflag.Parse()
+	var config ConfigENV
+	err := env.Parse(&config)
+	if err != nil {
+		log.Fatalf("Error parsing environment variables:%v", err)
+	}
+	if config.Address != "" {
+		server.Address.Set(config.Address)
+	} else {
+		pflag.VarP(&server.Address, "address", "a", "localhost:8080")
+		pflag.Parse()
+	}
 	bindAddress := server.Address.String()
 	log.Printf("Server started on %s...", bindAddress)
-	err := http.ListenAndServe(bindAddress, server.Router())
+	err = http.ListenAndServe(bindAddress, server.Router())
 	if err != nil {
 		log.Fatalf("Server failed to start: %v", err)
 	}
