@@ -53,7 +53,6 @@ func (agent *Agent) initFlags() {
 		agent.ServerAddress = *address
 	}
 
-	pflag.Parse()
 	fmt.Println("Server Address:", agent.ServerAddress)
 	fmt.Println("Report Interval:", agent.ReportInterval)
 	fmt.Println("Poll Interval:", agent.PollInterval)
