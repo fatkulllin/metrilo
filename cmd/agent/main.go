@@ -25,27 +25,31 @@ type Agent struct {
 }
 
 func (agent *Agent) initFlags() {
+
+	address := pflag.StringP("address", "a", "localhost:8080", "server address")
+	reportInterval := pflag.IntP("reportInterval", "r", 10, "frequency send")
+	pollInterval := pflag.IntP("pollInterval", "p", 2, "refresh metric")
+	pflag.Parse()
+
 	var config ConfigENV
 	err := env.Parse(&config)
 	if err != nil {
 		log.Fatalf("Error parsing environment variables:%v", err)
 	}
+
 	if config.PollInterval != 0 {
 		agent.PollInterval = config.PollInterval
 	} else {
-		pollInterval := pflag.IntP("pollInterval", "p", 2, "refresh metric")
 		agent.PollInterval = *pollInterval
 	}
 	if config.ReportInterval != 0 {
 		agent.ReportInterval = config.ReportInterval
 	} else {
-		reportInterval := pflag.IntP("reportInterval", "r", 10, "frequency send")
 		agent.ReportInterval = *reportInterval
 	}
 	if config.ServerAddress != "" {
 		agent.ServerAddress = config.ServerAddress
 	} else {
-		address := pflag.StringP("address", "a", "localhost:8080", "server address")
 		agent.ServerAddress = *address
 	}
 
