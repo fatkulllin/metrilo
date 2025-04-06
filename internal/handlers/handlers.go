@@ -132,7 +132,7 @@ func GetMetric(res http.ResponseWriter, req *http.Request) {
 		// m.Gauge[nameMetric] = incrementValue
 	}
 
-	res.WriteHeader(http.StatusOK)
+	// res.WriteHeader(http.StatusOK)
 }
 
 func AllGetMetrics(res http.ResponseWriter, req *http.Request) {

@@ -48,7 +48,6 @@ func main() {
 	metrics := metrics.NewMetrics()
 	pollInterval := time.NewTicker(time.Duration(*agent.PollInterval) * time.Second)
 	reportInterval := time.NewTicker(time.Duration(*agent.ReportInterval) * time.Second)
-	// lastSendMetricsTime := time.Now().Second()
 	endpoint := ""
 	c := HTTPClient()
 
@@ -63,15 +62,15 @@ func main() {
 			fmt.Println("Send metrics")
 			go func() {
 				for k, v := range metrics.Gauge {
-					fmt.Printf("Send Gauge type http://localhost:8080/update/gauge/%v/%v\n", k, v)
-					endpoint = fmt.Sprintf("http://localhost:8080/update/gauge/%v/%v", k, v)
+					fmt.Printf("Send Gauge type http://%v/update/gauge/%v/%v\n", *agent.ServerAddress, k, v)
+					endpoint = fmt.Sprintf("http://%v/update/gauge/%v/%v", *agent.ServerAddress, k, v)
 					SendRequest(c, http.MethodPost, endpoint)
 				}
 			}()
 			go func() {
 				for k, v := range metrics.Counter {
-					fmt.Printf("Send Counter type http://localhost:8080/update/counter/%v/%v\n", k, v)
-					endpoint = fmt.Sprintf("http://localhost:8080/update/counter/%v/%v", k, v)
+					fmt.Printf("Send Gauge type http://%v/update/counter/%v/%v\n", *agent.ServerAddress, k, v)
+					endpoint = fmt.Sprintf("http://%v/update/counter/%v/%v", *agent.ServerAddress, k, v)
 					SendRequest(c, http.MethodPost, endpoint)
 				}
 			}()
