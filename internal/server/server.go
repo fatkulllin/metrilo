@@ -33,11 +33,11 @@ func (server *Server) Start() {
 	r.Route("/update", func(r chi.Router) {
 		r.Use(
 			common.SetHeaderTextMiddleware,
-			common.CheckReqHeaderMiddleware,
 			common.MethodPostOnlyMiddleware,
 		)
 		r.With(common.ValidateURLParamsMiddleware,
-			common.ValidateTypeMetricMiddleware).Post("/{type}/{name}/{value}", server.handlers.SaveMetrics)
+			common.ValidateTypeMetricMiddleware,
+			common.CheckReqHeaderMiddleware).Post("/{type}/{name}/{value}", server.handlers.SaveMetrics)
 	})
 
 	r.Route("/value", func(r chi.Router) {
