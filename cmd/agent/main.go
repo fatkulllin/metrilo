@@ -76,12 +76,11 @@ func main() {
 	agent := NewAgent()
 	metrics := metrics.NewMetrics()
 	pollInterval := time.NewTicker(time.Duration(agent.PollInterval) * time.Second)
+	defer pollInterval.Stop()
 	reportInterval := time.NewTicker(time.Duration(agent.ReportInterval) * time.Second)
+	defer reportInterval.Stop()
 	endpoint := ""
 	c := HTTPClient()
-
-	defer pollInterval.Stop()
-	defer reportInterval.Stop()
 
 	for {
 		select {

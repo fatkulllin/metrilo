@@ -1,87 +1,51 @@
 package server
 
 import (
-	"errors"
 	"fmt"
 	"log"
-	"net"
 	"net/http"
-	"strconv"
 
-	"github.com/caarlos0/env"
+	config "github.com/fatkulllin/metrilo/internal/config/server"
 	"github.com/fatkulllin/metrilo/internal/handlers"
+	"github.com/fatkulllin/metrilo/internal/middleware/common"
 	"github.com/go-chi/chi"
-	"github.com/spf13/pflag"
 )
 
-type NetAddress struct {
-	Host string
-	Port int
-}
-
-func (a *NetAddress) Type() string {
-	return "netAddress"
-}
-
-func (a NetAddress) String() string {
-	return a.Host + ":" + strconv.Itoa(a.Port)
-}
-
-func (a *NetAddress) Set(s string) error {
-	host, portStr, err := net.SplitHostPort(s)
-	if err != nil {
-		return errors.New("need address in the form host:port")
-	}
-	port, err := strconv.Atoi(portStr)
-	if err != nil {
-		return err
-	}
-	a.Host = host
-	a.Port = port
-	return nil
-}
-
 type Server struct {
-	Address NetAddress
+	Address  string
+	handlers *handlers.Handlers
 }
 
-func NewServer() *Server {
+func NewServer(handlers *handlers.Handlers, cfg *config.Config) *Server {
 	fmt.Println("Initializing server...")
 	return &Server{
-		Address: NetAddress{
-			Host: "localhost",
-			Port: 8080,
-		},
+		Address:  cfg.Address,
+		handlers: handlers,
 	}
-}
-
-func (server *Server) Router() *chi.Mux {
-	r := chi.NewRouter()
-	r.Post(`/update/{type}/{name}/{value}`, handlers.SaveMetrics)
-	r.Get(`/value/{type}/{name}`, handlers.GetMetric)
-	r.Get("/", handlers.AllGetMetrics)
-	return r
-}
-
-type ConfigENV struct {
-	Address string `env:"ADDRESS"`
 }
 
 func (server *Server) Start() {
-	var config ConfigENV
-	err := env.Parse(&config)
-	if err != nil {
-		log.Fatalf("Error parsing environment variables:%v", err)
-	}
-	if config.Address != "" {
-		server.Address.Set(config.Address)
-	} else {
-		pflag.VarP(&server.Address, "address", "a", "localhost:8080")
-		pflag.Parse()
-	}
-	bindAddress := server.Address.String()
-	log.Printf("Server started on %s...", bindAddress)
-	err = http.ListenAndServe(bindAddress, server.Router())
+
+	log.Printf("Server started on %s...", server.Address)
+
+	r := chi.NewRouter()
+
+	r.Route("/update/{type}/{name}/{value}", func(r chi.Router) {
+		r.Use(common.SetHeaderTextMiddleware, common.CheckReqHeaderMiddleware, common.MethodPostOnlyMiddleware, common.ValidateURLParamsMiddleware, common.ValidateTypeMetricMiddleware)
+		r.Post("/", server.handlers.SaveMetrics)
+	})
+
+	r.Route("/value/{type}/{name}", func(r chi.Router) {
+		r.Use(common.SetHeaderTextMiddleware, common.ValidateTypeMetricMiddleware, common.MethodGetOnlyMiddleware)
+		r.Get("/", server.handlers.GetMetric)
+	})
+
+	r.Route("/", func(r chi.Router) {
+		r.Use(common.SetHeaderHTMLMiddleware, common.MethodGetOnlyMiddleware)
+		r.Get("/", server.handlers.AllGetMetrics)
+	})
+
+	err := http.ListenAndServe(server.Address, r)
 	if err != nil {
 		log.Fatalf("Server failed to start: %v", err)
 	}

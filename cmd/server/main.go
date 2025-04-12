@@ -1,12 +1,12 @@
 package main
 
 import (
-	"github.com/fatkulllin/metrilo/internal/server"
+	app "github.com/fatkulllin/metrilo/internal/app/server"
+	config "github.com/fatkulllin/metrilo/internal/config/server"
 )
 
 func main() {
-
-	server := server.NewServer()
-	server.Start()
-
+	config := config.LoadConfig()
+	app := app.NewApp(config)
+	app.Run()
 }

@@ -5,152 +5,87 @@ import (
 	"io"
 	"net/http"
 	"strconv"
-	"strings"
-	"unicode"
 
-	"github.com/fatkulllin/metrilo/internal/storage"
+	"github.com/fatkulllin/metrilo/internal/service"
 	"github.com/go-chi/chi"
 )
 
-var memStorage = storage.NewMemoryStorage()
-
-func isLetter(s string) bool {
-	return !strings.ContainsFunc(s, func(r rune) bool {
-		return !unicode.IsLetter(r)
-	})
+type Handlers struct {
+	service *service.MetricsService
 }
 
-func SaveMetrics(res http.ResponseWriter, req *http.Request) {
-	res.Header().Set("Content-Type", "text/plain")
-	if req.Method != http.MethodPost {
-		http.Error(res, "Only POST requests are allowed!!", http.StatusMethodNotAllowed)
-		return
-	}
-	fmt.Println(req.Header)
+func NewHandlers(service *service.MetricsService) *Handlers {
+	return &Handlers{service: service}
+}
 
+func (h *Handlers) SaveMetrics(res http.ResponseWriter, req *http.Request) {
 	typeMetric := chi.URLParam(req, "type")
 	nameMetric := chi.URLParam(req, "name")
 	valueMetric := chi.URLParam(req, "value")
-	if isLetter(nameMetric) {
-		if req.Header.Get("Content-Type") != "text/plain" {
-			http.Error(res, "Only Content-Type: text/plain header are allowed!!", http.StatusMethodNotAllowed)
-			return
-		}
-	}
-	if typeMetric == "" || nameMetric == "" || valueMetric == "" {
-		res.WriteHeader(http.StatusNotFound)
-		return
-	}
-	if typeMetric != "gauge" && typeMetric != "counter" {
-		res.WriteHeader(http.StatusBadRequest)
-		return
-	}
 
-	if typeMetric == "counter" {
-		// if !metrics.IsMetricCounterAllowed(nameMetric) {
-		// 	res.WriteHeader(http.StatusBadRequest)
-		// 	return
-		// }
+	switch typeMetric {
+	case "counter":
 		incrementValue, err := strconv.ParseInt(valueMetric, 10, 64)
 		if err != nil {
 			res.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		memStorage.AddCounter(nameMetric, incrementValue)
-		// storage.AddCounter(nameMetric, incrementValue)
-	}
-	if typeMetric == "gauge" {
-		// if !metrics.IsMetricGaugeAllowed(nameMetric) {
-		// 	res.WriteHeader(http.StatusBadRequest)
-		// 	return
-		// }
+		h.service.SaveCounter(nameMetric, incrementValue)
+	case "gauge":
 		floatValue, err := strconv.ParseFloat(valueMetric, 64)
 		if err != nil {
 			res.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		// fmt.Println(floatValue)
-		// fmt.Println(incrementValue)
-		memStorage.SetGauge(nameMetric, floatValue)
-		// m.Gauge[nameMetric] = incrementValue
-	}
+		h.service.SaveGauge(nameMetric, floatValue)
 
+	default:
+		http.Error(res, "Unknown type", http.StatusBadRequest)
+		return
+	}
 	res.WriteHeader(http.StatusOK)
 }
 
-func GetMetric(res http.ResponseWriter, req *http.Request) {
-	res.Header().Set("Content-Type", "text/plain")
-	if req.Method != http.MethodGet {
-		http.Error(res, "Only GET requests are allowed!!", http.StatusMethodNotAllowed)
-		return
-	}
-	// if req.Header.Get("Content-Type") != "text/plain" {
-	// 	http.Error(res, "Only Content-Type: text/plain header are allowed!!", http.StatusMethodNotAllowed)
-	// 	return
-	// }
+func (h *Handlers) GetMetric(res http.ResponseWriter, req *http.Request) {
 	typeMetric := chi.URLParam(req, "type")
 	nameMetric := chi.URLParam(req, "name")
-	// if !isLetter(nameMetric) {
-	// 	res.WriteHeader(http.StatusMethodNotAllowed)
-	// 	return
-	// }
-	if typeMetric == "" || nameMetric == "" {
-		res.WriteHeader(http.StatusNotFound)
-		return
-	}
-	if typeMetric != "gauge" && typeMetric != "counter" {
-		res.WriteHeader(http.StatusBadRequest)
-		return
-	}
 
-	if typeMetric == "counter" {
-		// if !metrics.IsMetricCounterAllowed(nameMetric) {
-		// 	res.WriteHeader(http.StatusBadRequest)
-		// 	return
-		// }
-		result, err := memStorage.GetCounter(nameMetric)
+	switch typeMetric {
+
+	case "counter":
+		result, err := h.service.GetCounter(nameMetric)
 		if err != nil {
 			res.WriteHeader(http.StatusNotFound)
 			return
 		}
 		io.WriteString(res, strconv.FormatInt(result, 10))
-		// storage.AddCounter(nameMetric, incrementValue)
-	}
-	if typeMetric == "gauge" {
-		// if !metrics.IsMetricGaugeAllowed(nameMetric) {
-		// 	res.WriteHeader(http.StatusBadRequest)
-		// 	return
-		// }
-		// fmt.Println(floatValue)
-		// fmt.Println(incrementValue)
-		result, err := memStorage.GetGauge(nameMetric)
+
+	case "gauge":
+		result, err := h.service.GetGauge(nameMetric)
 		if err != nil {
 			res.WriteHeader(http.StatusNotFound)
 			return
 		}
 		io.WriteString(res, strconv.FormatFloat(result, 'f', -1, 64))
-		// m.Gauge[nameMetric] = incrementValue
-	}
 
-	// res.WriteHeader(http.StatusOK)
+	default:
+		http.Error(res, "Unknown type", http.StatusBadRequest)
+		return
+	}
+	res.WriteHeader(http.StatusOK)
 }
 
-func AllGetMetrics(res http.ResponseWriter, req *http.Request) {
-	res.Header().Set("Content-Type", "text/html")
-	if req.Method != http.MethodGet {
-		http.Error(res, "Only GET requests are allowed!!", http.StatusMethodNotAllowed)
-		return
-	}
-	if req.Header.Get("Content-Type") != "text/plain" {
-		http.Error(res, "Only Content-Type: text/plain header are allowed!!", http.StatusMethodNotAllowed)
-		return
-	}
+func (h *Handlers) AllGetMetrics(res http.ResponseWriter, req *http.Request) {
+	metricsCounter, metricsGauge := h.service.GetMetrics()
+
 	fmt.Fprintln(res, "<ul>")
-	for k, v := range memStorage.Counter {
+	for k, v := range metricsCounter {
 		fmt.Fprintf(res, "<li>%s: %.v</li>\n", k, v)
 	}
-	for k, v := range memStorage.Gauge {
+
+	for k, v := range metricsGauge {
 		fmt.Fprintf(res, "<li>%s: %v</li>\n", k, v)
 	}
+
 	fmt.Fprintln(res, "</ul>")
 }
