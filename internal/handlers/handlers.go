@@ -72,7 +72,6 @@ func (h *Handlers) GetMetric(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, "Unknown type", http.StatusBadRequest)
 		return
 	}
-	res.WriteHeader(http.StatusOK)
 }
 
 func (h *Handlers) AllGetMetrics(res http.ResponseWriter, req *http.Request) {

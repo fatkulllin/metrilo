@@ -30,17 +30,22 @@ func (server *Server) Start() {
 
 	r := chi.NewRouter()
 
-	r.Route("/update/{type}/{name}/{value}", func(r chi.Router) {
-		r.Use(common.SetHeaderTextMiddleware, common.CheckReqHeaderMiddleware, common.MethodPostOnlyMiddleware, common.ValidateURLParamsMiddleware, common.ValidateTypeMetricMiddleware)
-		r.Post("/", server.handlers.SaveMetrics)
+	r.Route("/update", func(r chi.Router) {
+		r.Use(
+			common.SetHeaderTextMiddleware,
+			common.CheckReqHeaderMiddleware,
+			common.MethodPostOnlyMiddleware,
+		)
+		r.With(common.ValidateURLParamsMiddleware,
+			common.ValidateTypeMetricMiddleware).Post("/{type}/{name}/{value}", server.handlers.SaveMetrics)
 	})
 
-	r.Route("/value/{type}/{name}", func(r chi.Router) {
-		r.Use(common.SetHeaderTextMiddleware, common.ValidateTypeMetricMiddleware, common.MethodGetOnlyMiddleware)
-		r.Get("/", server.handlers.GetMetric)
+	r.Route("/value", func(r chi.Router) {
+		r.Use(common.SetHeaderTextMiddleware, common.MethodGetOnlyMiddleware)
+		r.With(common.ValidateTypeMetricMiddleware).Get("/{type}/{name}", server.handlers.GetMetric)
 	})
 
-	r.Route("/", func(r chi.Router) {
+	r.Group(func(r chi.Router) {
 		r.Use(common.SetHeaderHTMLMiddleware, common.MethodGetOnlyMiddleware)
 		r.Get("/", server.handlers.AllGetMetrics)
 	})
