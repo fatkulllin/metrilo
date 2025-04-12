@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/fatkulllin/metrilo/internal/service"
+	service "github.com/fatkulllin/metrilo/internal/service/server"
 	"github.com/go-chi/chi"
 )
 

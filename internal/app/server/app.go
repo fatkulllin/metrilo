@@ -4,7 +4,7 @@ import (
 	config "github.com/fatkulllin/metrilo/internal/config/server"
 	"github.com/fatkulllin/metrilo/internal/handlers"
 	"github.com/fatkulllin/metrilo/internal/server"
-	"github.com/fatkulllin/metrilo/internal/service"
+	service "github.com/fatkulllin/metrilo/internal/service/server"
 	"github.com/fatkulllin/metrilo/internal/storage"
 )
 
