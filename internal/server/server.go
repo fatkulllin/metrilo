@@ -8,6 +8,7 @@ import (
 	config "github.com/fatkulllin/metrilo/internal/config/server"
 	"github.com/fatkulllin/metrilo/internal/handlers"
 	"github.com/fatkulllin/metrilo/internal/middleware/common"
+	"github.com/fatkulllin/metrilo/internal/middleware/logging"
 	"github.com/go-chi/chi"
 )
 
@@ -29,12 +30,14 @@ func (server *Server) Start() {
 	log.Printf("Server started on %s...", server.Address)
 
 	r := chi.NewRouter()
+	r.Use(logging.RequestLogger) // logging.ResponseLogger
 
 	r.Route("/update", func(r chi.Router) {
 		r.Use(
 			common.SetHeaderTextMiddleware,
 			common.MethodPostOnlyMiddleware,
 		)
+
 		r.With(common.ValidateURLParamsMiddleware,
 			common.ValidateTypeMetricMiddleware,
 			common.CheckReqHeaderMiddleware).Post("/{type}/{name}/{value}", server.handlers.SaveMetrics)
