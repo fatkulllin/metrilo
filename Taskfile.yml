@@ -16,6 +16,7 @@ tasks:
         metricstest -test.v -test.run=^TestIteration3[AB]*$ -source-path=. -agent-binary-path=cmd/agent/agent -binary-path=cmd/server/server
         metricstest -test.v -test.run=^TestIteration4$ -agent-binary-path=cmd/agent/agent -binary-path=cmd/server/server -server-port=35929 -source-path=.
         metricstest -test.v -test.run=^TestIteration5$ -agent-binary-path=cmd/agent/agent -binary-path=cmd/server/server -server-port=35929 -source-path=.
+        metricstest -test.v -test.run=^TestIteration6$ -agent-binary-path=cmd/agent/agent -binary-path=cmd/server/server -server-port=35930 -source-path=.
   static-tests:
     cmds:
       - echo "- Запуск статических тестов"
