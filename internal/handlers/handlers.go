@@ -178,6 +178,8 @@ func (h *Handlers) GetMetricsJSON(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	res.Header().Set("Content-Type", "application/json")
+
 	res.Write([]byte(buf.Bytes()))
 	res.WriteHeader(http.StatusOK)
 }
