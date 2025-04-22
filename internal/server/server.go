@@ -34,18 +34,18 @@ func (server *Server) Start() {
 
 	r.Route("/update", func(r chi.Router) {
 		r.Use(
-			common.SetHeaderTextMiddleware,
 			common.MethodPostOnlyMiddleware,
 		)
-
-		r.With(common.ValidateURLParamsMiddleware,
+		r.Post("/", server.handlers.SaveJSONMetrics)
+		r.With(common.SetHeaderTextMiddleware,
+			common.ValidateURLParamsMiddleware,
 			common.ValidateTypeMetricMiddleware,
 			common.CheckReqHeaderMiddleware).Post("/{type}/{name}/{value}", server.handlers.SaveMetrics)
 	})
 
 	r.Route("/value", func(r chi.Router) {
-		r.Use(common.SetHeaderTextMiddleware, common.MethodGetOnlyMiddleware)
-		r.With(common.ValidateTypeMetricMiddleware).Get("/{type}/{name}", server.handlers.GetMetric)
+		r.Post("/", server.handlers.GetMetricsJSON)
+		r.With(common.SetHeaderTextMiddleware, common.MethodGetOnlyMiddleware, common.ValidateTypeMetricMiddleware).Get("/{type}/{name}", server.handlers.GetMetric)
 	})
 
 	r.Group(func(r chi.Router) {
