@@ -78,55 +78,55 @@ func (h *Handlers) SaveJSONMetrics(res http.ResponseWriter, req *http.Request) {
 	typeMetric := r.MType
 	nameMetric := r.ID
 
-	if isLetter(nameMetric) {
-		if req.Header.Get("Content-Type") != "application/json" {
-			http.Error(res, "Only Content-Type: application/json header are allowed!!", http.StatusMethodNotAllowed)
-			return
-		}
-		if r.ID == "" || r.MType == "" {
-			http.Error(res, "missing fields", http.StatusBadRequest)
-			return
-		}
-		switch typeMetric {
-		case "counter":
-			if r.Delta == nil {
-				http.Error(res, "missing required field: delta for counter", http.StatusBadRequest)
-				return
-			}
-			valueMetric := *r.Delta
-			h.service.SaveCounter(nameMetric, valueMetric)
-			resp, err := json.Marshal(models.Metrics{
-				ID:    nameMetric,
-				MType: "counter",
-				Delta: &valueMetric,
-			})
-			if err != nil {
-				logger.Log.Error(err.Error())
-			}
-			res.Write(resp)
-		case "gauge":
-			if r.Value == nil {
-				http.Error(res, "missing required field: value for counter", http.StatusBadRequest)
-				return
-			}
-			valueMetric := *r.Value
-			h.service.SaveGauge(nameMetric, valueMetric)
-			resp, err := json.Marshal(models.Metrics{
-				ID:    nameMetric,
-				MType: "gauge",
-				Value: &valueMetric,
-			})
-			if err != nil {
-				logger.Log.Error(err.Error())
-			}
-			res.Write(resp)
-		default:
-			http.Error(res, "Unknown type", http.StatusBadRequest)
-			return
-		}
+	// if isLetter(nameMetric) {
+	if req.Header.Get("Content-Type") != "application/json" {
+		http.Error(res, "Only Content-Type: application/json header are allowed!!", http.StatusMethodNotAllowed)
+		return
 	}
-
+	if r.ID == "" || r.MType == "" {
+		http.Error(res, "missing fields", http.StatusBadRequest)
+		return
+	}
+	switch typeMetric {
+	case "counter":
+		if r.Delta == nil {
+			http.Error(res, "missing required field: delta for counter", http.StatusBadRequest)
+			return
+		}
+		valueMetric := *r.Delta
+		h.service.SaveCounter(nameMetric, valueMetric)
+		resp, err := json.Marshal(models.Metrics{
+			ID:    nameMetric,
+			MType: "counter",
+			Delta: &valueMetric,
+		})
+		if err != nil {
+			logger.Log.Error(err.Error())
+		}
+		res.Write(resp)
+	case "gauge":
+		if r.Value == nil {
+			http.Error(res, "missing required field: value for counter", http.StatusBadRequest)
+			return
+		}
+		valueMetric := *r.Value
+		h.service.SaveGauge(nameMetric, valueMetric)
+		resp, err := json.Marshal(models.Metrics{
+			ID:    nameMetric,
+			MType: "gauge",
+			Value: &valueMetric,
+		})
+		if err != nil {
+			logger.Log.Error(err.Error())
+		}
+		res.Write(resp)
+	default:
+		http.Error(res, "Unknown type", http.StatusBadRequest)
+		return
+	}
 }
+
+// }
 
 func (h *Handlers) GetMetric(res http.ResponseWriter, req *http.Request) {
 	typeMetric := chi.URLParam(req, "type")
