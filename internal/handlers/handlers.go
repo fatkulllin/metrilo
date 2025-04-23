@@ -59,7 +59,7 @@ func isLetter(s string) bool {
 }
 
 func (h *Handlers) SaveJSONMetrics(res http.ResponseWriter, req *http.Request) {
-	logger.Log.Info("🔍 Получен запрос",
+	logger.Log.Info("Request:",
 		zap.String("method", req.Method),
 		zap.String("url", req.URL.String()),
 	)

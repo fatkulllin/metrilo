@@ -3,6 +3,8 @@ package storage
 import (
 	"errors"
 	"fmt"
+
+	"github.com/fatkulllin/metrilo/internal/logger"
 )
 
 type Repositories interface {
@@ -18,7 +20,7 @@ type MemStorage struct {
 }
 
 func NewMemoryStorage() *MemStorage {
-	fmt.Println("Initializing memory storage...")
+	logger.Log.Info("Initializing memory storage...")
 	return &MemStorage{
 		Gauge:   make(map[string]float64),
 		Counter: make(map[string]int64),

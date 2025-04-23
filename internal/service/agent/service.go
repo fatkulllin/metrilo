@@ -35,7 +35,8 @@ func (s *MetricsService) SendToServer(client *http.Client, method string, endpoi
 	req.Header.Add("Content-Type", "application/json")
 	response, err := client.Do(req)
 	if err != nil {
-		log.Fatalf("Error sending request to API endpoint. %+v", err)
+		log.Printf("Error sending request to API endpoint. %+v", err)
+		return nil, 0
 	}
 
 	// Close the connection to reuse it

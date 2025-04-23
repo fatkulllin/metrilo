@@ -1,15 +1,16 @@
 package server
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 
 	config "github.com/fatkulllin/metrilo/internal/config/server"
 	"github.com/fatkulllin/metrilo/internal/handlers"
+	"github.com/fatkulllin/metrilo/internal/logger"
 	"github.com/fatkulllin/metrilo/internal/middleware/common"
 	"github.com/fatkulllin/metrilo/internal/middleware/logging"
 	"github.com/go-chi/chi"
+	"go.uber.org/zap"
 )
 
 type Server struct {
@@ -18,7 +19,7 @@ type Server struct {
 }
 
 func NewServer(handlers *handlers.Handlers, cfg *config.Config) *Server {
-	fmt.Println("Initializing server...")
+	logger.Log.Info("Initializing server...")
 	return &Server{
 		Address:  cfg.Address,
 		handlers: handlers,
@@ -27,7 +28,7 @@ func NewServer(handlers *handlers.Handlers, cfg *config.Config) *Server {
 
 func (server *Server) Start() {
 
-	log.Printf("Server started on %s...", server.Address)
+	logger.Log.Info("Server started on...", zap.Any("server", server.Address))
 
 	r := chi.NewRouter()
 	r.Use(logging.RequestLogger) // logging.ResponseLogger
