@@ -1,12 +1,15 @@
 package agent
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"time"
 
 	config "github.com/fatkulllin/metrilo/internal/config/agent"
+	"github.com/fatkulllin/metrilo/internal/logger"
+	"github.com/fatkulllin/metrilo/internal/models"
 	service "github.com/fatkulllin/metrilo/internal/service/agent"
 )
 
@@ -41,7 +44,7 @@ func (agent *Agent) Run() {
 	defer pollInterval.Stop()
 	reportInterval := time.NewTicker(time.Duration(agent.ReportInterval) * time.Second)
 	defer reportInterval.Stop()
-	endpoint := ""
+	endpoint := fmt.Sprintf("http://%v/update/", agent.ServerAddress)
 	client := newHTTPClient()
 
 	for {
@@ -52,16 +55,30 @@ func (agent *Agent) Run() {
 			fmt.Println("Send metrics")
 			go func() {
 				for k, v := range agent.Service.GetMetrics().Gauge {
-					fmt.Printf("Send Gauge type http://%v/update/gauge/%v/%v\n", agent.ServerAddress, k, v)
-					endpoint = fmt.Sprintf("http://%v/update/gauge/%v/%v", agent.ServerAddress, k, v)
-					agent.Service.SendToServer(client, http.MethodPost, endpoint)
+					fmt.Printf("Send Gauge type http://%v/update/ key: %v value:%v\n", agent.ServerAddress, k, v)
+					reqBody, err := json.Marshal(models.Metrics{
+						ID:    k,
+						MType: "gauge",
+						Value: &v,
+					})
+					if err != nil {
+						logger.Log.Error(err.Error())
+					}
+					agent.Service.SendToServer(client, http.MethodPost, endpoint, reqBody)
 				}
 			}()
 			go func() {
 				for k, v := range agent.Service.GetMetrics().Counter {
-					fmt.Printf("Send Gauge type http://%v/update/counter/%v/%v\n", agent.ServerAddress, k, v)
-					endpoint = fmt.Sprintf("http://%v/update/counter/%v/%v", agent.ServerAddress, k, v)
-					agent.Service.SendToServer(client, http.MethodPost, endpoint)
+					fmt.Printf("Send Counter type http://%v/update/ key: %v value:%v\n", agent.ServerAddress, k, v)
+					reqBody, err := json.Marshal(models.Metrics{
+						ID:    k,
+						MType: "counter",
+						Delta: &v,
+					})
+					if err != nil {
+						logger.Log.Error(err.Error())
+					}
+					agent.Service.SendToServer(client, http.MethodPost, endpoint, reqBody)
 				}
 			}()
 		}

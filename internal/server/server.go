@@ -44,7 +44,7 @@ func (server *Server) Start() {
 	})
 
 	r.Route("/value", func(r chi.Router) {
-		r.Post("/", server.handlers.GetMetricsJSON)
+		r.Post("/", server.handlers.GetMetricJSON)
 		r.With(common.SetHeaderTextMiddleware, common.MethodGetOnlyMiddleware, common.ValidateTypeMetricMiddleware).Get("/{type}/{name}", server.handlers.GetMetric)
 	})
 

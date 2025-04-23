@@ -26,13 +26,13 @@ func (s *MetricsService) GetMetrics() *metrics.Metrics {
 	return s.metrics
 }
 
-func (s *MetricsService) SendToServer(client *http.Client, method string, endpoint string) ([]byte, int) {
+func (s *MetricsService) SendToServer(client *http.Client, method string, endpoint string, reqBody []byte) ([]byte, int) {
 
-	req, err := http.NewRequest(method, endpoint, bytes.NewBuffer([]byte{}))
+	req, err := http.NewRequest(method, endpoint, bytes.NewBuffer(reqBody))
 	if err != nil {
 		log.Fatalf("Error Occurred. %+v", err)
 	}
-	req.Header.Add("Content-Type", "text/plain")
+	req.Header.Add("Content-Type", "application/json")
 	response, err := client.Do(req)
 	if err != nil {
 		log.Fatalf("Error sending request to API endpoint. %+v", err)
