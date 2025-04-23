@@ -25,6 +25,8 @@ const (
 	LastGC        = "LastGC"
 	Lookups       = "Lookups"
 	MCacheInuse   = "MCacheInuse"
+	MCacheSys     = "MCacheSys"
+	MSpanInuse    = "MSpanInuse"
 	MSpanSys      = "MSpanSys"
 	Mallocs       = "Mallocs"
 	NextGC        = "NextGC"
@@ -38,8 +40,6 @@ const (
 	TotalAlloc    = "TotalAlloc"
 	RandomValue   = "RandomValue"
 	PollCount     = "PollCount"
-	MCacheSys     = "MCacheSys"
-	MSpanInuse    = "MSpanInuse"
 )
 
 func NewMetrics() *Metrics {
@@ -68,6 +68,8 @@ func (m *Metrics) CollectMetrics() {
 	m.Gauge[LastGC] = float64(memstats.LastGC)
 	m.Gauge[Lookups] = float64(memstats.Lookups)
 	m.Gauge[MCacheInuse] = float64(memstats.MCacheInuse)
+	m.Gauge[MCacheSys] = float64(memstats.MCacheSys)
+	m.Gauge[MSpanInuse] = float64(memstats.MSpanInuse)
 	m.Gauge[MSpanSys] = float64(memstats.MSpanSys)
 	m.Gauge[Mallocs] = float64(memstats.Mallocs)
 	m.Gauge[NextGC] = float64(memstats.NextGC)
@@ -79,9 +81,6 @@ func (m *Metrics) CollectMetrics() {
 	m.Gauge[StackSys] = float64(memstats.StackSys)
 	m.Gauge[Sys] = float64(memstats.Sys)
 	m.Gauge[TotalAlloc] = float64(memstats.TotalAlloc)
-	m.Gauge[MCacheSys] = float64(memstats.MCacheSys)
-	m.Gauge[MSpanInuse] = float64(memstats.MSpanInuse)
 	m.Gauge[RandomValue] = rand.Float64()
-
 	m.Counter[PollCount] += 1
 }

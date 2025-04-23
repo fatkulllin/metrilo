@@ -11,12 +11,12 @@ tasks:
         go build -buildvcs=false  -o cmd/agent/agent cmd/agent/main.go
         go build -buildvcs=false -o cmd/server/server cmd/server/main.go
         # Запуск тестов
-        # metricstest -test.v -test.run=^TestIteration1$ -binary-path=cmd/server/server
-        # metricstest -test.v -test.run=^TestIteration2[AB]*$ -source-path=. -agent-binary-path=cmd/agent/agent
-        # metricstest -test.v -test.run=^TestIteration3[AB]*$ -source-path=. -agent-binary-path=cmd/agent/agent -binary-path=cmd/server/server
-        # metricstest -test.v -test.run=^TestIteration4$ -agent-binary-path=cmd/agent/agent -binary-path=cmd/server/server -server-port=35929 -source-path=.
-        # metricstest -test.v -test.run=^TestIteration5$ -agent-binary-path=cmd/agent/agent -binary-path=cmd/server/server -server-port=35929 -source-path=.
-        # metricstest -test.v -test.run=^TestIteration6$ -agent-binary-path=cmd/agent/agent -binary-path=cmd/server/server -server-port=35930 -source-path=.
+        metricstest -test.v -test.run=^TestIteration1$ -binary-path=cmd/server/server
+        metricstest -test.v -test.run=^TestIteration2[AB]*$ -source-path=. -agent-binary-path=cmd/agent/agent
+        metricstest -test.v -test.run=^TestIteration3[AB]*$ -source-path=. -agent-binary-path=cmd/agent/agent -binary-path=cmd/server/server
+        metricstest -test.v -test.run=^TestIteration4$ -agent-binary-path=cmd/agent/agent -binary-path=cmd/server/server -server-port=35929 -source-path=.
+        metricstest -test.v -test.run=^TestIteration5$ -agent-binary-path=cmd/agent/agent -binary-path=cmd/server/server -server-port=35929 -source-path=.
+        metricstest -test.v -test.run=^TestIteration6$ -agent-binary-path=cmd/agent/agent -binary-path=cmd/server/server -server-port=35930 -source-path=.
         SERVER_PORT=8080 ADDRESS="localhost:${SERVER_PORT}" metricstest -test.v -test.run=^TestIteration7$ -agent-binary-path=cmd/agent/agent -binary-path=cmd/server/server -server-port=$SERVER_PORT -source-path=.
   static-tests:
     cmds:
