@@ -8,9 +8,11 @@ import (
 	"time"
 
 	config "github.com/fatkulllin/metrilo/internal/config/agent"
+	"github.com/fatkulllin/metrilo/internal/gzip"
 	"github.com/fatkulllin/metrilo/internal/logger"
 	"github.com/fatkulllin/metrilo/internal/models"
 	service "github.com/fatkulllin/metrilo/internal/service/agent"
+	"go.uber.org/zap"
 )
 
 type Agent struct {
@@ -54,18 +56,23 @@ func (agent *Agent) Run() {
 		case <-reportInterval.C:
 			fmt.Println("Send metrics")
 			go func() {
-				for k, v := range agent.Service.GetMetrics().Gauge {
-					fmt.Printf("Send Gauge type http://%v/update/ key: %v value:%v\n", agent.ServerAddress, k, v)
-					reqBody, err := json.Marshal(models.Metrics{
-						ID:    k,
-						MType: "gauge",
-						Value: &v,
-					})
-					if err != nil {
-						logger.Log.Error(err.Error())
-					}
-					agent.Service.SendToServer(client, http.MethodPost, endpoint, reqBody)
-				}
+				// for k, v := range agent.Service.GetMetrics().Gauge {
+				// 	fmt.Printf("Send Gauge type http://%v/update/ key: %v value:%v\n", agent.ServerAddress, k, v)
+				// 	reqBody, err := json.Marshal(models.Metrics{
+				// 		ID:    k,
+				// 		MType: "gauge",
+				// 		Value: &v,
+				// 	})
+				// 	if err != nil {
+				// 		logger.Log.Error(err.Error())
+				// 	}
+				// 	bodyBuf, err := gzip.GzipCompress(reqBody)
+				// 	if err != nil {
+				// 		logger.Log.Error("Error compress gague body", zap.String("error", err.Error()), zap.String("request body", string(reqBody)))
+				// 		return
+				// 	}
+				// 	agent.Service.SendToServer(client, http.MethodPost, endpoint, bodyBuf)
+				// }
 			}()
 			go func() {
 				for k, v := range agent.Service.GetMetrics().Counter {
@@ -78,7 +85,12 @@ func (agent *Agent) Run() {
 					if err != nil {
 						logger.Log.Error(err.Error())
 					}
-					agent.Service.SendToServer(client, http.MethodPost, endpoint, reqBody)
+					bodyBuf, err := gzip.GzipCompress(reqBody)
+					if err != nil {
+						logger.Log.Error("Error compress gauge body", zap.String("error", err.Error()), zap.String("request body", string(reqBody)))
+						return
+					}
+					agent.Service.SendToServer(client, http.MethodPost, endpoint, bodyBuf)
 				}
 			}()
 		}

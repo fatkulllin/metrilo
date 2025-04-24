@@ -7,7 +7,9 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/fatkulllin/metrilo/internal/logger"
 	"github.com/fatkulllin/metrilo/internal/metrics"
+	"go.uber.org/zap"
 )
 
 type MetricsService struct {
@@ -32,6 +34,7 @@ func (s *MetricsService) SendToServer(client *http.Client, method string, endpoi
 	if err != nil {
 		log.Fatalf("Error Occurred. %+v", err)
 	}
+	req.Header.Add("Content-Encoding", "gzip")
 	req.Header.Add("Content-Type", "application/json")
 	response, err := client.Do(req)
 	if err != nil {
@@ -44,11 +47,11 @@ func (s *MetricsService) SendToServer(client *http.Client, method string, endpoi
 
 	body, err := io.ReadAll(response.Body)
 	if err != nil {
-		log.Fatalf("Couldn't parse response body. %+v", err)
+		logger.Log.Error("Couldn't parse response body:", zap.String("error", err.Error()))
 	}
 
 	if response.StatusCode != http.StatusOK {
-		log.Fatalf("Request failed with status: %s", response.Status)
+		logger.Log.Error("Request failed with status:", zap.String("error", err.Error()))
 	}
 	fmt.Printf("Тело ответа: %s\n", body)
 	return body, response.StatusCode

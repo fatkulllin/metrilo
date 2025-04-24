@@ -8,6 +8,7 @@ import (
 	"github.com/fatkulllin/metrilo/internal/handlers"
 	"github.com/fatkulllin/metrilo/internal/logger"
 	"github.com/fatkulllin/metrilo/internal/middleware/common"
+	"github.com/fatkulllin/metrilo/internal/middleware/compressor"
 	"github.com/fatkulllin/metrilo/internal/middleware/logging"
 	"github.com/go-chi/chi"
 	"go.uber.org/zap"
@@ -32,7 +33,7 @@ func (server *Server) Start() {
 
 	r := chi.NewRouter()
 	r.Use(logging.RequestLogger) // logging.ResponseLogger
-
+	r.Use(compressor.GzipMiddleware)
 	r.Route("/update", func(r chi.Router) {
 		r.Use(
 			common.MethodPostOnlyMiddleware,
