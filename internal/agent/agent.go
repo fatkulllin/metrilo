@@ -94,6 +94,5 @@ func (agent *Agent) Run() {
 				}
 			}()
 		}
-
 	}
 }

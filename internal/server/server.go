@@ -21,10 +21,12 @@ type Server struct {
 
 func NewServer(handlers *handlers.Handlers, cfg *config.Config) *Server {
 	logger.Log.Info("Initializing server...")
-	return &Server{
+	server := &Server{
 		Address:  cfg.Address,
 		handlers: handlers,
 	}
+	logger.Log.Info("Server URL:", zap.String("server", server.Address))
+	return server
 }
 
 func (server *Server) Start() {

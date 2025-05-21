@@ -1,8 +1,12 @@
 package storage
 
 import (
+	"bufio"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"os"
 
 	"github.com/fatkulllin/metrilo/internal/logger"
 )
@@ -15,8 +19,8 @@ type Repositories interface {
 }
 
 type MemStorage struct {
-	Gauge   map[string]float64
-	Counter map[string]int64
+	Gauge   map[string]float64 `json:"Gauge"`
+	Counter map[string]int64   `json:"Counter"`
 }
 
 func NewMemoryStorage() *MemStorage {
@@ -55,4 +59,50 @@ func (m *MemStorage) GetGauge(nameMetric string) (float64, error) {
 
 func (m *MemStorage) GetMetrics() (map[string]float64, map[string]int64) {
 	return m.Gauge, m.Counter
+}
+
+func (m *MemStorage) SaveMetricsToFile(filename string, metrics *MemStorage) error {
+	file, err := os.OpenFile(filename, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
+	if err != nil {
+		return err
+	}
+	writer := bufio.NewWriter(file)
+	data, err := json.MarshalIndent(*metrics, "", " ")
+	if err != nil {
+		return err
+	}
+	// записываем событие в буфер
+	if _, err := writer.Write(data); err != nil {
+		return err
+	}
+
+	// добавляем перенос строки
+	if err := writer.WriteByte('\n'); err != nil {
+		return err
+	}
+
+	// записываем буфер в файл
+	return writer.Flush()
+}
+
+func (m *MemStorage) ReadMetricsFromFile(filename string) (*MemStorage, error) {
+	file, err := os.OpenFile(filename, os.O_RDONLY, 0666)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	data, err := io.ReadAll(file)
+	if err != nil {
+		return nil, err
+	}
+
+	metrics := MemStorage{}
+
+	err = json.Unmarshal(data, &metrics)
+	if err != nil {
+		return nil, err
+	}
+
+	return &metrics, err
 }
