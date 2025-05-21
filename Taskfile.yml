@@ -18,6 +18,9 @@ tasks:
         metricstest -test.v -test.run=^TestIteration5$ -agent-binary-path=cmd/agent/agent -binary-path=cmd/server/server -server-port=35929 -source-path=.
         metricstest -test.v -test.run=^TestIteration6$ -agent-binary-path=cmd/agent/agent -binary-path=cmd/server/server -server-port=35930 -source-path=.
         SERVER_PORT=8080 ADDRESS="localhost:${SERVER_PORT}" metricstest -test.v -test.run=^TestIteration7$ -agent-binary-path=cmd/agent/agent -binary-path=cmd/server/server -server-port=$SERVER_PORT -source-path=.
+        ADDRESS="localhost:35921" TEMP_FILE="keka" metricstest -test.v -test.run=^TestIteration8$ -agent-binary-path=cmd/agent/agent -binary-path=cmd/server/server -server-port=35921 -source-path=.
+        TEMP_FILE="kaka" ADDRESS="localhost:8080"  metricstest -test.v -test.run=^TestIteration9$ -agent-binary-path=cmd/agent/agent -binary-path=cmd/server/server -file-storage-path=$$TEMP_FILE -server-port=8080 -source-path=.
+
   static-tests:
     cmds:
       - echo "- Запуск статических тестов"
