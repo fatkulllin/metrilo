@@ -1,14 +1,17 @@
 package server
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 
 	config "github.com/fatkulllin/metrilo/internal/config/server"
 	"github.com/fatkulllin/metrilo/internal/handlers"
+	"github.com/fatkulllin/metrilo/internal/logger"
 	"github.com/fatkulllin/metrilo/internal/middleware/common"
+	"github.com/fatkulllin/metrilo/internal/middleware/compressor"
+	"github.com/fatkulllin/metrilo/internal/middleware/logging"
 	"github.com/go-chi/chi"
+	"go.uber.org/zap"
 )
 
 type Server struct {
@@ -17,32 +20,36 @@ type Server struct {
 }
 
 func NewServer(handlers *handlers.Handlers, cfg *config.Config) *Server {
-	fmt.Println("Initializing server...")
-	return &Server{
+	logger.Log.Info("Initializing server...")
+	server := &Server{
 		Address:  cfg.Address,
 		handlers: handlers,
 	}
+	logger.Log.Info("Server URL:", zap.String("server", server.Address))
+	return server
 }
 
 func (server *Server) Start() {
 
-	log.Printf("Server started on %s...", server.Address)
+	logger.Log.Info("Server started on...", zap.Any("server", server.Address))
 
 	r := chi.NewRouter()
-
+	r.Use(logging.RequestLogger) // logging.ResponseLogger
+	r.Use(compressor.GzipMiddleware)
 	r.Route("/update", func(r chi.Router) {
 		r.Use(
-			common.SetHeaderTextMiddleware,
 			common.MethodPostOnlyMiddleware,
 		)
-		r.With(common.ValidateURLParamsMiddleware,
+		r.Post("/", server.handlers.SaveJSONMetrics)
+		r.With(common.SetHeaderTextMiddleware,
+			common.ValidateURLParamsMiddleware,
 			common.ValidateTypeMetricMiddleware,
 			common.CheckReqHeaderMiddleware).Post("/{type}/{name}/{value}", server.handlers.SaveMetrics)
 	})
 
 	r.Route("/value", func(r chi.Router) {
-		r.Use(common.SetHeaderTextMiddleware, common.MethodGetOnlyMiddleware)
-		r.With(common.ValidateTypeMetricMiddleware).Get("/{type}/{name}", server.handlers.GetMetric)
+		r.Post("/", server.handlers.GetMetricJSON)
+		r.With(common.SetHeaderTextMiddleware, common.MethodGetOnlyMiddleware, common.ValidateTypeMetricMiddleware).Get("/{type}/{name}", server.handlers.GetMetric)
 	})
 
 	r.Group(func(r chi.Router) {
