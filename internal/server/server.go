@@ -57,6 +57,8 @@ func (server *Server) Start() {
 		r.Get("/", server.handlers.AllGetMetrics)
 	})
 
+	r.Get("/ping", server.handlers.PingDatabase)
+
 	err := http.ListenAndServe(server.Address, r)
 	if err != nil {
 		log.Fatalf("Server failed to start: %v", err)

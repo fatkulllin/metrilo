@@ -1,6 +1,12 @@
 package service
 
 import (
+	"context"
+	"errors"
+	"fmt"
+	"time"
+
+	"github.com/fatkulllin/metrilo/internal/database"
 	"github.com/fatkulllin/metrilo/internal/storage"
 )
 
@@ -8,10 +14,11 @@ type MetricsService struct {
 	store           *storage.MemStorage
 	storeInterval   int
 	fileStoragePath string
+	db              *database.Database
 }
 
-func NewMetricsService(store *storage.MemStorage, storeInterval int, fileStoragePath string) *MetricsService {
-	return &MetricsService{store: store, storeInterval: storeInterval, fileStoragePath: fileStoragePath}
+func NewMetricsService(store *storage.MemStorage, storeInterval int, fileStoragePath string, db *database.Database) *MetricsService {
+	return &MetricsService{store: store, storeInterval: storeInterval, fileStoragePath: fileStoragePath, db: db}
 }
 
 func (s *MetricsService) SaveGauge(name string, value float64) {
@@ -60,4 +67,21 @@ func (s *MetricsService) ReadMetricsFromFile(filename string) error {
 		s.store.SaveGauge(name, valueGauge)
 	}
 	return err
+}
+
+func (s *MetricsService) PingDatabase() error {
+	if s.db == nil {
+		return errors.New("database is not initialized")
+	}
+
+	db := s.db.GetDB()
+	if db == nil {
+		return errors.New("database is not connected")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := db.PingContext(ctx); err != nil {
+		return fmt.Errorf("ping failed: %w", err)
+	}
+	return nil
 }
