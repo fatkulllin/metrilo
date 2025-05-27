@@ -14,6 +14,7 @@ type Config struct {
 	StoreInterval   int    `env:"STORE_INTERVAL"`
 	FileStoragePath string `env:"FILE_STORAGE_PATH"`
 	Restore         bool   `env:"RESTORE"`
+	Database        string `env:"DATABASE_DSN"`
 }
 
 func validateAddress(s string) error {
@@ -30,6 +31,7 @@ func LoadConfig() *Config {
 	pflag.IntVarP(&config.StoreInterval, "interval", "i", 300, "set interval")
 	pflag.StringVarP(&config.FileStoragePath, "path", "f", ".temp", "set path/filename")
 	pflag.BoolVarP(&config.Restore, "restore", "r", false, "set true/false")
+	pflag.StringVarP(&config.Database, "database", "d", "host=localhost user=postgres password=postgres dbname=postgres port=5432 sslmode=disable", "set database dsn")
 	pflag.Parse()
 
 	err := env.Parse(&config)
@@ -44,5 +46,6 @@ func LoadConfig() *Config {
 		StoreInterval:   config.StoreInterval,
 		FileStoragePath: config.FileStoragePath,
 		Restore:         config.Restore,
+		Database:        config.Database,
 	}
 }
