@@ -34,14 +34,18 @@ func (h *Handlers) SaveMetrics(res http.ResponseWriter, req *http.Request) {
 			res.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		h.service.SaveCounter(nameMetric, incrementValue)
+		h.service.SaveCounter(nameMetric, incrementValue, req.Context())
 	case "gauge":
 		floatValue, err := strconv.ParseFloat(valueMetric, 64)
 		if err != nil {
 			res.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		h.service.SaveGauge(nameMetric, floatValue)
+		if err := h.service.SaveGauge(nameMetric, floatValue, req.Context()); err != nil {
+			res.Write([]byte(err.Error()))
+			res.WriteHeader(http.StatusBadRequest)
+			return
+		}
 
 	default:
 		http.Error(res, "Unknown type", http.StatusBadRequest)
@@ -85,7 +89,7 @@ func (h *Handlers) SaveJSONMetrics(res http.ResponseWriter, req *http.Request) {
 			return
 		}
 		valueMetric := *r.Delta
-		h.service.SaveCounter(nameMetric, valueMetric)
+		h.service.SaveCounter(nameMetric, valueMetric, req.Context())
 		resp, err := json.Marshal(models.Metrics{
 			ID:    nameMetric,
 			MType: "counter",
@@ -101,7 +105,7 @@ func (h *Handlers) SaveJSONMetrics(res http.ResponseWriter, req *http.Request) {
 			return
 		}
 		valueMetric := *r.Value
-		h.service.SaveGauge(nameMetric, valueMetric)
+		h.service.SaveGauge(nameMetric, valueMetric, req.Context())
 		resp, err := json.Marshal(models.Metrics{
 			ID:    nameMetric,
 			MType: "gauge",

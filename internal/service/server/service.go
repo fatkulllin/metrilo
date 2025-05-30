@@ -6,33 +6,61 @@ import (
 	"fmt"
 	"time"
 
+	config "github.com/fatkulllin/metrilo/internal/config/server"
 	"github.com/fatkulllin/metrilo/internal/database"
+	"github.com/fatkulllin/metrilo/internal/logger"
 	"github.com/fatkulllin/metrilo/internal/storage"
+	"go.uber.org/zap"
 )
 
 type MetricsService struct {
-	store           *storage.MemStorage
-	storeInterval   int
-	fileStoragePath string
-	db              *database.Database
+	store  *storage.MemStorage
+	config *config.Config
+	db     *database.Database
 }
 
-func NewMetricsService(store *storage.MemStorage, storeInterval int, fileStoragePath string, db *database.Database) *MetricsService {
-	return &MetricsService{store: store, storeInterval: storeInterval, fileStoragePath: fileStoragePath, db: db}
+func NewMetricsService(store *storage.MemStorage, config *config.Config, db *database.Database) *MetricsService {
+	return &MetricsService{store: store, config: config, db: db}
 }
 
-func (s *MetricsService) SaveGauge(name string, value float64) {
+func (s *MetricsService) SaveGauge(name string, value float64, ctx context.Context) error {
+
+	if s.config.WasDatabaseSet && s.db.GetDB() != nil {
+		logger.Log.Info("Save gauge metric to DB")
+		return s.store.SaveGaugeToDB(s.db.GetDB(), name, value, ctx)
+	}
+
 	s.store.SaveGauge(name, value)
-	if s.storeInterval == 0 {
-		_ = s.SaveMetricsToFile(s.fileStoragePath)
+
+	if s.config.StoreInterval == 0 || (s.config.WasPathSet && s.config.WasIntervalSet) {
+		logger.Log.Info("Saving gague to file")
+		if err := s.SaveMetricsToFile(s.config.FileStoragePath); err != nil {
+			logger.Log.Error("Failed to save to file", zap.Error(err))
+		}
+		return s.SaveMetricsToFile(s.config.FileStoragePath)
 	}
+
+	return nil
 }
 
-func (s *MetricsService) SaveCounter(name string, delta int64) {
-	s.store.SaveCounter(name, delta)
-	if s.storeInterval == 0 {
-		_ = s.SaveMetricsToFile(s.fileStoragePath)
+func (s *MetricsService) SaveCounter(name string, delta int64, ctx context.Context) error {
+
+	if s.config.WasDatabaseSet && s.db.GetDB() != nil {
+		logger.Log.Info("Save counter metric to DB")
+		return s.store.SaveCounterToDB(s.db.GetDB(), name, delta, ctx)
 	}
+
+	s.store.SaveCounter(name, delta)
+
+	if s.config.StoreInterval == 0 || (s.config.WasPathSet && s.config.WasIntervalSet) {
+		logger.Log.Info("Saving gague to file")
+		if err := s.SaveMetricsToFile(s.config.FileStoragePath); err != nil {
+			logger.Log.Error("Failed to save to file", zap.Error(err))
+		}
+		return s.SaveMetricsToFile(s.config.FileStoragePath)
+	}
+
+	return nil
 }
 
 func (s *MetricsService) GetCounter(name string) (int64, error) {
