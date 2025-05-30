@@ -57,14 +57,16 @@ func LoadConfig() *Config {
 		}
 		if f.Name == "database" {
 			config.WasDatabaseSet = true
-			logger.Log.Info("Save metrics to db")
 		}
 	})
 
 	if config.WasPathSet && config.WasIntervalSet {
 		logger.Log.Info("Save metrics to file")
 	}
-
+	if config.WasDatabaseSet || config.Database != "" {
+		logger.Log.Info("Save metrics to db")
+		config.WasDatabaseSet = true
+	}
 	return &Config{
 		Address:         config.Address,
 		StoreInterval:   config.StoreInterval,
