@@ -1,11 +1,12 @@
 package app
 
 import (
-	"fmt"
+	"context"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	config "github.com/fatkulllin/metrilo/internal/config/server"
 	"github.com/fatkulllin/metrilo/internal/database"
@@ -29,13 +30,17 @@ type App struct {
 
 func NewApp(cfg *config.Config) *App {
 	memStore := storage.NewMemoryStorage()
-	db, err := database.NewDatabase(cfg.Database)
-	if err != nil {
-		logger.Log.Error("Error connect to DB", zap.String("error", err.Error()))
-		db = nil
+	var db *database.Database
+	var err error
+	if cfg.WasDatabaseSet {
+		db, err = database.NewDatabase(cfg.Database)
+		if err != nil {
+			logger.Log.Warn("Error connect to DB", zap.String("error", err.Error()))
+			db = nil
+		}
 	}
-	service := service.NewMetricsService(memStore, cfg.StoreInterval, cfg.FileStoragePath, db)
-	fmt.Println(service)
+
+	service := service.NewMetricsService(memStore, cfg, db)
 	handlers := handlers.NewHandlers(service)
 	server := server.NewServer(handlers, cfg)
 
@@ -51,6 +56,22 @@ func NewApp(cfg *config.Config) *App {
 			log.Println("error read metrics from file", err)
 		}
 		log.Println("Read metrics from file okay")
+	}
+
+	if db != nil {
+		if migrateConnect := db.GetDB(); migrateConnect != nil {
+			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+			// не забываем освободить ресурс
+			defer cancel()
+			_, err := migrateConnect.QueryContext(ctx, "CREATE TABLE IF NOT EXISTS counter(name varchar(40) primary key, value integer);")
+			if err != nil {
+				logger.Log.Error(err.Error())
+			}
+			_, err = migrateConnect.QueryContext(ctx, "CREATE TABLE IF NOT EXISTS gauge(name varchar(40) primary key, value double precision);")
+			if err != nil {
+				logger.Log.Error(err.Error())
+			}
+		}
 	}
 
 	return &App{

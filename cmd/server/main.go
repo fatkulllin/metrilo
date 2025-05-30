@@ -7,8 +7,9 @@ import (
 )
 
 func main() {
-	config := config.LoadConfig()
 	logger.Initialize("INFO")
+	config := config.LoadConfig()
+
 	app := app.NewApp(config)
 	app.Run()
 }
