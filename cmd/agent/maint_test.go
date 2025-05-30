@@ -22,6 +22,8 @@ var allowedGaugeMetrics = map[string]struct{}{
 	metrics.LastGC:        {},
 	metrics.Lookups:       {},
 	metrics.MCacheInuse:   {},
+	metrics.MCacheSys:     {},
+	metrics.MSpanInuse:    {},
 	metrics.MSpanSys:      {},
 	metrics.Mallocs:       {},
 	metrics.NextGC:        {},
