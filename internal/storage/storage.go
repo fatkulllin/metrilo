@@ -60,6 +60,28 @@ func (m *MemStorage) GetGauge(nameMetric string) (float64, error) {
 	return value, nil
 }
 
+func (m *MemStorage) GetGaugeDB(dbConnect *sql.DB, nameMetric string, ctx context.Context) (float64, error) {
+
+	row := dbConnect.QueryRowContext(ctx, "SELECT value FROM gauge WHERE name = $1", nameMetric)
+
+	var result float64
+	err := row.Scan(&result)
+	if err != nil {
+		logger.Log.Error("Cannot scan query", zap.Error(err))
+	}
+	return result, nil
+}
+func (m *MemStorage) GetCounterDB(dbConnect *sql.DB, nameMetric string, ctx context.Context) (int64, error) {
+	row := dbConnect.QueryRowContext(ctx, "SELECT value FROM counter WHERE name = $1", nameMetric)
+
+	var result int64
+	err := row.Scan(&result)
+	if err != nil {
+		logger.Log.Error("Cannot scan query", zap.Error(err))
+	}
+	return result, nil
+}
+
 func (m *MemStorage) GetMetrics() (map[string]float64, map[string]int64) {
 	return m.Gauge, m.Counter
 }
