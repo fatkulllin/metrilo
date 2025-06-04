@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 
@@ -46,12 +47,11 @@ func (d *Database) ReconnectDB() error {
 	return nil
 }
 
-func (d *Database) GetDB() *sql.DB {
-	if d.db == nil {
-		logger.Log.Error("Error database is not connected")
-		return nil
+func (d *Database) GetDB() (*sql.DB, error) {
+	if d == nil {
+		return nil, errors.New("database is not connected")
 	}
-	return d.db
+	return d.db, nil
 }
 
 func (d *Database) Close() error {

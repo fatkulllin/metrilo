@@ -111,20 +111,40 @@ func (m *MemStorage) ReadMetricsFromFile(filename string) (*MemStorage, error) {
 }
 
 func (m *MemStorage) SaveGaugeToDB(dbConnect *sql.DB, nameMetric string, increment float64, ctx context.Context) error {
-	_, err := dbConnect.ExecContext(ctx, "INSERT INTO gauge (name, value) VALUES ($1, $2) ON CONFLICT (name) DO UPDATE SET value = EXCLUDED.value;", nameMetric, increment)
+	err := saveToDB(dbConnect, nameMetric, increment, ctx, "gauge")
 	if err != nil {
 		logger.Log.Error("failed to upsert gauge metrics:", zap.String("error", err.Error()))
 		return err
 	}
 	return nil
-
 }
 
 func (m *MemStorage) SaveCounterToDB(dbConnect *sql.DB, nameMetric string, increment int64, ctx context.Context) error {
-	_, err := dbConnect.ExecContext(ctx, "INSERT INTO counter (name, value) VALUES ($1, $2) ON CONFLICT (name) DO UPDATE SET value = EXCLUDED.value;", nameMetric, increment)
+	err := saveToDB(dbConnect, nameMetric, increment, ctx, "counter")
 	if err != nil {
 		logger.Log.Error("failed to upsert counter metrics:", zap.String("error", err.Error()))
 		return err
 	}
 	return nil
+}
+
+func saveToDB[T int64 | float64](dbConnect *sql.DB, nameMetric string, value T, ctx context.Context, tableName string) error {
+	tx, err := dbConnect.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	query := fmt.Sprintf("INSERT INTO %s (name, value) VALUES ($1, $2) ON CONFLICT (name) DO UPDATE SET value = EXCLUDED.value;", tableName)
+	stmt, err := tx.PrepareContext(ctx, query)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	_, err = stmt.ExecContext(ctx, nameMetric, value)
+	if err != nil {
+		logger.Log.Error("failed to upsert gauge metrics:", zap.String("error", err.Error()))
+		return err
+	}
+	return tx.Commit()
 }

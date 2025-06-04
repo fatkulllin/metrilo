@@ -58,6 +58,7 @@ func (server *Server) Start() {
 	})
 
 	r.Get("/ping", server.handlers.PingDatabase)
+	r.Post("/updates/", server.handlers.UpdateMetrics)
 
 	err := http.ListenAndServe(server.Address, r)
 	if err != nil {
