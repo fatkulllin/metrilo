@@ -24,12 +24,13 @@ func NewMetricsService(store *storage.MemStorage, config *config.Config, db *dat
 }
 
 func (s *MetricsService) SaveGauge(name string, value float64, ctx context.Context) error {
-	dbConnect, err := s.db.GetDB()
-	if err != nil {
-		logger.Log.Error("Can not get DB connection", zap.Error(err))
-		return err
-	}
-	if s.config.WasDatabaseSet && dbConnect != nil {
+
+	if s.config.WasDatabaseSet {
+		dbConnect, err := s.db.GetDB()
+		if err != nil {
+			logger.Log.Error("Can not get DB connection", zap.Error(err))
+			return err
+		}
 		logger.Log.Info("Save metric to DB", zap.String("gauge", name))
 		return s.store.SaveGaugeToDB(dbConnect, name, value, ctx)
 	}
@@ -48,12 +49,13 @@ func (s *MetricsService) SaveGauge(name string, value float64, ctx context.Conte
 }
 
 func (s *MetricsService) SaveCounter(name string, delta int64, ctx context.Context) error {
-	dbConnect, err := s.db.GetDB()
-	if err != nil {
-		logger.Log.Error("Can not get DB connection", zap.Error(err))
-		return err
-	}
-	if s.config.WasDatabaseSet && dbConnect != nil {
+
+	if s.config.WasDatabaseSet {
+		dbConnect, err := s.db.GetDB()
+		if err != nil {
+			logger.Log.Error("Can not get DB connection", zap.Error(err))
+			return err
+		}
 		logger.Log.Info("Save metric to DB", zap.String("counter", name))
 		return s.store.SaveCounterToDB(dbConnect, name, delta, ctx)
 	}
