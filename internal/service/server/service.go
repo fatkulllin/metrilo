@@ -56,7 +56,7 @@ func (s *MetricsService) SaveCounter(name string, delta int64, ctx context.Conte
 			logger.Log.Error("Can not get DB connection", zap.Error(err))
 			return err
 		}
-		logger.Log.Info("Save metric to DB", zap.String("counter", name))
+		logger.Log.Info("Save metric to DB", zap.String("counter", name), zap.Int64("value", delta))
 		return s.store.SaveCounterToDB(dbConnect, name, delta, ctx)
 	}
 
@@ -80,7 +80,7 @@ func (s *MetricsService) GetCounter(name string, ctx context.Context) (int64, er
 			logger.Log.Error("Can not get DB connection", zap.Error(err))
 			return 0, err
 		}
-		logger.Log.Info("Save metric to DB", zap.String("counter", name))
+		logger.Log.Info("Get metric to DB", zap.String("counter", name))
 		return s.store.GetCounterDB(dbConnect, name, ctx)
 	}
 	return s.store.GetCounter(name)
@@ -93,7 +93,7 @@ func (s *MetricsService) GetGauge(name string, ctx context.Context) (float64, er
 			logger.Log.Error("Can not get DB connection", zap.Error(err))
 			return 0, err
 		}
-		logger.Log.Info("Save metric to DB", zap.String("counter", name))
+		logger.Log.Info("Get metric to DB", zap.String("counter", name))
 		return s.store.GetGaugeDB(dbConnect, name, ctx)
 	}
 	return s.store.GetGauge(name)
