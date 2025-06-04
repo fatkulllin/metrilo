@@ -128,7 +128,7 @@ func (h *Handlers) GetMetric(res http.ResponseWriter, req *http.Request) {
 	switch typeMetric {
 
 	case "counter":
-		result, err := h.service.GetCounter(nameMetric)
+		result, err := h.service.GetCounter(nameMetric, req.Context())
 		if err != nil {
 			res.WriteHeader(http.StatusNotFound)
 			return
@@ -136,7 +136,7 @@ func (h *Handlers) GetMetric(res http.ResponseWriter, req *http.Request) {
 		io.WriteString(res, strconv.FormatInt(result, 10))
 
 	case "gauge":
-		result, err := h.service.GetGauge(nameMetric)
+		result, err := h.service.GetGauge(nameMetric, req.Context())
 		if err != nil {
 			res.WriteHeader(http.StatusNotFound)
 			return
@@ -167,7 +167,7 @@ func (h *Handlers) GetMetricJSON(res http.ResponseWriter, req *http.Request) {
 	switch typeMetric {
 
 	case "counter":
-		result, err := h.service.GetCounter(nameMetric)
+		result, err := h.service.GetCounter(nameMetric, req.Context())
 		if err != nil {
 			res.WriteHeader(http.StatusNotFound)
 			return
@@ -183,7 +183,7 @@ func (h *Handlers) GetMetricJSON(res http.ResponseWriter, req *http.Request) {
 		}
 
 	case "gauge":
-		result, err := h.service.GetGauge(nameMetric)
+		result, err := h.service.GetGauge(nameMetric, req.Context())
 		if err != nil {
 			res.WriteHeader(http.StatusNotFound)
 			return
