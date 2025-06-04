@@ -67,7 +67,7 @@ func (m *MemStorage) GetGaugeDB(dbConnect *sql.DB, nameMetric string, ctx contex
 	var result float64
 	err := row.Scan(&result)
 	if err != nil {
-		logger.Log.Error("Cannot scan query", zap.Error(err))
+		logger.Log.Error("Cannot scan query", zap.Error(err), zap.String("name metric", nameMetric))
 	}
 	return result, nil
 }
@@ -77,7 +77,7 @@ func (m *MemStorage) GetCounterDB(dbConnect *sql.DB, nameMetric string, ctx cont
 	var result int64
 	err := row.Scan(&result)
 	if err != nil {
-		logger.Log.Error("Cannot scan query", zap.Error(err))
+		logger.Log.Error("Cannot scan query", zap.Error(err), zap.String("name metric", nameMetric))
 	}
 	return result, nil
 }
