@@ -228,3 +228,57 @@ func (h *Handlers) PingDatabase(res http.ResponseWriter, req *http.Request) {
 	}
 	res.WriteHeader(http.StatusOK)
 }
+
+func (h *Handlers) UpdateMetrics(res http.ResponseWriter, req *http.Request) {
+	logger.Log.Info("Request:",
+		zap.String("method", req.Method),
+		zap.String("url", req.URL.String()),
+	)
+
+	metrics := make([]models.Metrics, 0)
+
+	logger.Log.Info("decoding request")
+
+	decode := json.NewDecoder(req.Body)
+
+	if err := decode.Decode(&metrics); err != nil {
+		logger.Log.Error("cannot decode request JSON body", zap.Error(err))
+		res.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	logger.Log.Info("parsed request", zap.Any("request", metrics))
+
+	for _, v := range metrics {
+		switch v.MType {
+		case "counter":
+			if v.Delta == nil {
+				errMsg := fmt.Sprintf("missing field: delta for counter %q", v.MType)
+				logger.Log.Warn("invalid request", zap.String("error", errMsg))
+				http.Error(res, errMsg, http.StatusBadRequest)
+			}
+			err := h.service.SaveCounter(v.ID, *v.Delta, req.Context())
+			if err != nil {
+				logger.Log.Error(err.Error())
+				http.Error(res, "DB connect is not available", http.StatusInternalServerError)
+				return
+			}
+		case "gauge":
+			if v.Value == nil {
+				errMsg := fmt.Sprintf("missing field: value for gauge %q", v.MType)
+				logger.Log.Warn("invalid request", zap.String("error", errMsg))
+				http.Error(res, errMsg, http.StatusBadRequest)
+			}
+			err := h.service.SaveGauge(v.ID, *v.Value, req.Context())
+			if err != nil {
+				logger.Log.Error(err.Error())
+				http.Error(res, "DB connect is not available", http.StatusInternalServerError)
+				return
+			}
+		default:
+			errMsg := fmt.Sprintf("bad request: unsupported metric type %q", v.MType)
+			logger.Log.Warn("invalid request", zap.String("error", errMsg))
+			http.Error(res, errMsg, http.StatusBadRequest)
+		}
+	}
+}

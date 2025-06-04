@@ -24,10 +24,14 @@ func NewMetricsService(store *storage.MemStorage, config *config.Config, db *dat
 }
 
 func (s *MetricsService) SaveGauge(name string, value float64, ctx context.Context) error {
-
-	if s.config.WasDatabaseSet && s.db.GetDB() != nil {
-		logger.Log.Info("Save gauge metric to DB")
-		return s.store.SaveGaugeToDB(s.db.GetDB(), name, value, ctx)
+	dbConnect, err := s.db.GetDB()
+	if err != nil {
+		logger.Log.Error("Can not get DB connection", zap.Error(err))
+		return err
+	}
+	if s.config.WasDatabaseSet && dbConnect != nil {
+		logger.Log.Info("Save metric to DB", zap.String("gauge", name))
+		return s.store.SaveGaugeToDB(dbConnect, name, value, ctx)
 	}
 
 	s.store.SaveGauge(name, value)
@@ -44,10 +48,14 @@ func (s *MetricsService) SaveGauge(name string, value float64, ctx context.Conte
 }
 
 func (s *MetricsService) SaveCounter(name string, delta int64, ctx context.Context) error {
-
-	if s.config.WasDatabaseSet && s.db.GetDB() != nil {
-		logger.Log.Info("Save counter metric to DB")
-		return s.store.SaveCounterToDB(s.db.GetDB(), name, delta, ctx)
+	dbConnect, err := s.db.GetDB()
+	if err != nil {
+		logger.Log.Error("Can not get DB connection", zap.Error(err))
+		return err
+	}
+	if s.config.WasDatabaseSet && dbConnect != nil {
+		logger.Log.Info("Save metric to DB", zap.String("counter", name))
+		return s.store.SaveCounterToDB(dbConnect, name, delta, ctx)
 	}
 
 	s.store.SaveCounter(name, delta)
@@ -102,13 +110,14 @@ func (s *MetricsService) PingDatabase() error {
 		return errors.New("database is not initialized")
 	}
 
-	db := s.db.GetDB()
-	if db == nil {
-		return errors.New("database is not connected")
+	dbConnect, err := s.db.GetDB()
+	if err != nil {
+		logger.Log.Error("Can not get DB connection", zap.Error(err))
+		return err
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	if err := db.PingContext(ctx); err != nil {
+	if err := dbConnect.PingContext(ctx); err != nil {
 		return fmt.Errorf("ping failed: %w", err)
 	}
 	return nil

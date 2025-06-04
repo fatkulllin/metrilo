@@ -59,7 +59,7 @@ func NewApp(cfg *config.Config) *App {
 	}
 
 	if db != nil {
-		if migrateConnect := db.GetDB(); migrateConnect != nil {
+		if migrateConnect, _ := db.GetDB(); migrateConnect != nil {
 			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 			// не забываем освободить ресурс
 			defer cancel()
