@@ -1,13 +1,18 @@
 package agent
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"time"
 
 	config "github.com/fatkulllin/metrilo/internal/config/agent"
+	"github.com/fatkulllin/metrilo/internal/gzip"
+	"github.com/fatkulllin/metrilo/internal/logger"
+	"github.com/fatkulllin/metrilo/internal/models"
 	service "github.com/fatkulllin/metrilo/internal/service/agent"
+	"go.uber.org/zap"
 )
 
 type Agent struct {
@@ -41,7 +46,7 @@ func (agent *Agent) Run() {
 	defer pollInterval.Stop()
 	reportInterval := time.NewTicker(time.Duration(agent.ReportInterval) * time.Second)
 	defer reportInterval.Stop()
-	endpoint := ""
+	endpoint := fmt.Sprintf("http://%v/updates/", agent.ServerAddress)
 	client := newHTTPClient()
 
 	for {
@@ -49,22 +54,69 @@ func (agent *Agent) Run() {
 		case <-pollInterval.C:
 			agent.Service.CollectMetrics()
 		case <-reportInterval.C:
-			fmt.Println("Send metrics")
-			go func() {
-				for k, v := range agent.Service.GetMetrics().Gauge {
-					fmt.Printf("Send Gauge type http://%v/update/gauge/%v/%v\n", agent.ServerAddress, k, v)
-					endpoint = fmt.Sprintf("http://%v/update/gauge/%v/%v", agent.ServerAddress, k, v)
-					agent.Service.SendToServer(client, http.MethodPost, endpoint)
-				}
-			}()
-			go func() {
-				for k, v := range agent.Service.GetMetrics().Counter {
-					fmt.Printf("Send Gauge type http://%v/update/counter/%v/%v\n", agent.ServerAddress, k, v)
-					endpoint = fmt.Sprintf("http://%v/update/counter/%v/%v", agent.ServerAddress, k, v)
-					agent.Service.SendToServer(client, http.MethodPost, endpoint)
-				}
-			}()
+			metrics := make([]models.Metrics, 0)
+			for k, v := range agent.Service.GetMetrics().Gauge {
+				metrics = append(metrics, models.Metrics{
+					ID:    k,
+					MType: "gauge",
+					Value: &v})
+			}
+			for k, v := range agent.Service.GetMetrics().Counter {
+				fmt.Println(k, v)
+				metrics = append(metrics, models.Metrics{
+					ID:    k,
+					MType: "counter",
+					Delta: &v})
+			}
+			reqBody, err := json.Marshal(metrics)
+			if err != nil {
+				logger.Log.Error(err.Error())
+			}
+			bodyBuf, err := gzip.GzipCompress(reqBody)
+			if err != nil {
+				logger.Log.Error("Error compress gague body", zap.String("error", err.Error()), zap.String("request body", string(reqBody)))
+				return
+			}
+			agent.Service.SendToServer(client, http.MethodPost, endpoint, bodyBuf)
+			// fmt.Println("Send metrics")
+			// go func() {
+			// 	for k, v := range agent.Service.GetMetrics().Gauge {
+			// 		fmt.Printf("Send Gauge type http://%v/update/ key: %v value:%v\n", agent.ServerAddress, k, v)
+			// 		reqBody, err := json.Marshal(models.Metrics{
+			// 			ID:    k,
+			// 			MType: "gauge",
+			// 			Value: &v,
+			// 		})
+			// 		if err != nil {
+			// 			logger.Log.Error(err.Error())
+			// 		}
+			// 		bodyBuf, err := gzip.GzipCompress(reqBody)
+			// 		if err != nil {
+			// 			logger.Log.Error("Error compress gague body", zap.String("error", err.Error()), zap.String("request body", string(reqBody)))
+			// 			return
+			// 		}
+			// 		agent.Service.SendToServer(client, http.MethodPost, endpoint, bodyBuf)
+			// 	}
+			// }()
+			// go func() {
+			// 	for k, v := range agent.Service.GetMetrics().Counter {
+			// 		fmt.Printf("Send Counter type http://%v/update/ key: %v value:%v\n", agent.ServerAddress, k, v)
+			// 		reqBody, err := json.Marshal(models.Metrics{
+			// 			ID:    k,
+			// 			MType: "counter",
+			// 			Delta: &v,
+			// 		})
+			// 		if err != nil {
+			// 			logger.Log.Error(err.Error())
+			// 		}
+			// 		bodyBuf, err := gzip.GzipCompress(reqBody)
+			// 		if err != nil {
+			// 			logger.Log.Error("Error compress gauge body", zap.String("error", err.Error()), zap.String("request body", string(reqBody)))
+			// 			return
+			// 		}
+			// 		agent.Service.SendToServer(client, http.MethodPost, endpoint, bodyBuf)
+			// 	}
+			// }()
 		}
-
 	}
 }
