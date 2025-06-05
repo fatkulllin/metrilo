@@ -71,6 +71,7 @@ func (m *MemStorage) GetGaugeDB(dbConnect *sql.DB, nameMetric string, ctx contex
 	}
 	return result, nil
 }
+
 func (m *MemStorage) GetCounterDB(dbConnect *sql.DB, nameMetric string, ctx context.Context) (int64, error) {
 	row := dbConnect.QueryRowContext(ctx, "SELECT value FROM counter WHERE name = $1", nameMetric)
 
@@ -133,40 +134,68 @@ func (m *MemStorage) ReadMetricsFromFile(filename string) (*MemStorage, error) {
 }
 
 func (m *MemStorage) SaveGaugeToDB(dbConnect *sql.DB, nameMetric string, increment float64, ctx context.Context) error {
-	err := saveToDB(dbConnect, nameMetric, increment, ctx, "gauge")
-	if err != nil {
-		logger.Log.Error("failed to upsert gauge metrics:", zap.String("error", err.Error()))
-		return err
-	}
-	return nil
-}
-
-func (m *MemStorage) SaveCounterToDB(dbConnect *sql.DB, nameMetric string, increment int64, ctx context.Context) error {
-	err := saveToDB(dbConnect, nameMetric, increment, ctx, "counter")
-	if err != nil {
-		logger.Log.Error("failed to upsert counter metrics:", zap.String("error", err.Error()))
-		return err
-	}
-	return nil
-}
-
-func saveToDB[T int64 | float64](dbConnect *sql.DB, nameMetric string, value T, ctx context.Context, tableName string) error {
 	tx, err := dbConnect.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
-	query := fmt.Sprintf("INSERT INTO %s (name, value) VALUES ($1, $2) ON CONFLICT (name) DO UPDATE SET value = EXCLUDED.value;", tableName)
-	stmt, err := tx.PrepareContext(ctx, query)
+
+	stmt, err := tx.PrepareContext(ctx, "INSERT INTO gauge (name, value) VALUES ($1, $2) ON CONFLICT (name) DO UPDATE SET value = EXCLUDED.value;")
 	if err != nil {
 		return err
 	}
 	defer stmt.Close()
 
-	_, err = stmt.ExecContext(ctx, nameMetric, value)
+	_, err = stmt.ExecContext(ctx, nameMetric, increment)
 	if err != nil {
-		logger.Log.Error("failed to upsert gauge metrics:", zap.String("error", err.Error()))
+		return fmt.Errorf("storage failed to upsert gauge name: %s error: %s", nameMetric, err)
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return fmt.Errorf("storage failed to commit transaction gauge name: %s error: %s", nameMetric, err)
+	}
+
+	return nil
+}
+
+func (m *MemStorage) SaveCounterToDB(dbConnect *sql.DB, nameMetric string, increment int64, ctx context.Context) error {
+
+	row := dbConnect.QueryRowContext(ctx, "SELECT value FROM counter WHERE name = $1", nameMetric)
+
+	var current int64
+
+	err := row.Scan(&current)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			current = 0
+		} else {
+			return fmt.Errorf("error get value counter name: %s error: %s", nameMetric, err)
+		}
+	}
+
+	result := increment + current
+
+	tx, err := dbConnect.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("storage failed start transaction: %s error: %s", nameMetric, err)
+	}
+	defer tx.Rollback()
+
+	stmt, err := tx.PrepareContext(ctx, "INSERT INTO counter (name, value) VALUES ($1, $2) ON CONFLICT (name) DO UPDATE SET value = EXCLUDED.value;")
+	if err != nil {
 		return err
 	}
-	return tx.Commit()
+	defer stmt.Close()
+
+	_, err = stmt.ExecContext(ctx, nameMetric, result)
+	if err != nil {
+		return fmt.Errorf("storage failed to upsert counter name: %s error: %s", nameMetric, err)
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return fmt.Errorf("storage failed to commit transaction counter name: %s error: %s", nameMetric, err)
+	}
+	return nil
 }
