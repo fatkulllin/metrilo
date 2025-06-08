@@ -25,6 +25,7 @@ func NewApp(cfg *config.Config) *App {
 	}
 }
 
-func (a *App) Run() {
-	a.agent.Run()
+func (a *App) Run() error {
+	err := a.agent.Run()
+	return err
 }

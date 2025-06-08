@@ -12,6 +12,7 @@ import (
 	"github.com/fatkulllin/metrilo/internal/database"
 	"github.com/fatkulllin/metrilo/internal/handlers"
 	"github.com/fatkulllin/metrilo/internal/logger"
+	"github.com/fatkulllin/metrilo/internal/retry"
 	"github.com/fatkulllin/metrilo/internal/server"
 	service "github.com/fatkulllin/metrilo/internal/service/server"
 	"github.com/fatkulllin/metrilo/internal/storage"
@@ -33,11 +34,15 @@ func NewApp(cfg *config.Config) *App {
 	var db *database.Database
 	var err error
 	if cfg.WasDatabaseSet {
-		db, err = database.NewDatabase(cfg.Database)
-		if err != nil {
-			logger.Log.Warn("Error connect to DB", zap.String("error", err.Error()))
-			db = nil
-		}
+		retry.Do(3, func() error {
+			db, err = database.NewDatabase(cfg.Database)
+			if err != nil {
+				logger.Log.Warn("Error connect to DB", zap.String("error", err.Error()))
+				db = nil
+				return err
+			}
+			return nil
+		}, retry.IsPGError)
 	}
 
 	service := service.NewMetricsService(memStore, cfg, db)

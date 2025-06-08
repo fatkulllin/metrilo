@@ -41,7 +41,7 @@ func newHTTPClient() *http.Client {
 	return client
 }
 
-func (agent *Agent) Run() {
+func (agent *Agent) Run() error {
 	pollInterval := time.NewTicker(time.Duration(agent.PollInterval) * time.Second)
 	defer pollInterval.Stop()
 	reportInterval := time.NewTicker(time.Duration(agent.ReportInterval) * time.Second)
@@ -75,9 +75,10 @@ func (agent *Agent) Run() {
 			bodyBuf, err := gzip.GzipCompress(reqBody)
 			if err != nil {
 				logger.Log.Error("Error compress gague body", zap.String("error", err.Error()), zap.String("request body", string(reqBody)))
-				return
+				return nil
 			}
-			agent.Service.SendToServer(client, http.MethodPost, endpoint, bodyBuf)
+			err = agent.Service.SendToServer(client, http.MethodPost, endpoint, bodyBuf)
+			return err
 			// fmt.Println("Send metrics")
 			// go func() {
 			// 	for k, v := range agent.Service.GetMetrics().Gauge {
