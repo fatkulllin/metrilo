@@ -10,7 +10,10 @@ import (
 )
 
 type Config struct {
-	Address string `env:"ADDRESS" envDefault:"localhost:8080"`
+	Address         string `env:"ADDRESS"`
+	StoreInterval   int    `env:"STORE_INTERVAL"`
+	FileStoragePath string `env:"FILE_STORAGE_PATH"`
+	Restore         bool   `env:"RESTORE"`
 }
 
 func validateAddress(s string) error {
@@ -23,19 +26,23 @@ func validateAddress(s string) error {
 
 func LoadConfig() *Config {
 	var config Config
+	pflag.StringVarP(&config.Address, "address", "a", "localhost:8080", "set host:port")
+	pflag.IntVarP(&config.StoreInterval, "interval", "i", 300, "set interval")
+	pflag.StringVarP(&config.FileStoragePath, "path", "f", ".temp", "set path/filename")
+	pflag.BoolVarP(&config.Restore, "restore", "r", false, "set true/false")
+	pflag.Parse()
+
 	err := env.Parse(&config)
 	if err != nil {
 		log.Printf("Error parsing environment variables:%v", err)
 	}
-	if config.Address == "localhost:8080" {
-		pflag.StringVarP(&config.Address, "address", "a", "localhost:8080", "set host:port")
-		pflag.Parse()
-	}
-
 	if err := validateAddress(config.Address); err != nil {
 		log.Fatalf("Error parsing host %s", err)
 	}
 	return &Config{
-		Address: config.Address,
+		Address:         config.Address,
+		StoreInterval:   config.StoreInterval,
+		FileStoragePath: config.FileStoragePath,
+		Restore:         config.Restore,
 	}
 }
