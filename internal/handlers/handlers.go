@@ -150,6 +150,7 @@ func (h *Handlers) GetMetric(res http.ResponseWriter, req *http.Request) {
 }
 
 func (h *Handlers) GetMetricJSON(res http.ResponseWriter, req *http.Request) {
+	fmt.Println("a")
 	var r models.Metrics
 	logger.Log.Info("decoding request")
 

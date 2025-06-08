@@ -3,6 +3,7 @@ package retry
 import (
 	"errors"
 	"fmt"
+	"io"
 	"net"
 
 	"github.com/fatkulllin/metrilo/internal/logger"
@@ -14,7 +15,10 @@ import (
 func IsNetworkError(err error) bool {
 	var netErr net.Error
 	var opErr *net.OpError
-
+	if errors.Is(err, io.EOF) {
+		fmt.Println("Detected io.EOF — считаем временной ошибкой")
+		return true
+	}
 	return (errors.As(err, &netErr) && netErr.Timeout()) || errors.As(err, &opErr)
 }
 
