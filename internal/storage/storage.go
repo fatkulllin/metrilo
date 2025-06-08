@@ -36,12 +36,12 @@ func NewMemoryStorage() *MemStorage {
 
 func (m *MemStorage) SaveCounter(nameMetric string, increment int64) {
 	m.Counter[nameMetric] += increment
-	fmt.Printf("Save type Counter %+v\n", m)
+	logger.Log.Info("Save type Counter", zap.String("name: ", nameMetric), zap.Int64("value: ", increment))
 }
 
 func (m *MemStorage) SaveGauge(nameMetric string, increment float64) {
 	m.Gauge[nameMetric] = increment
-	fmt.Printf("Save type Gauge %+v\n", m)
+	logger.Log.Info("Save type Gauge", zap.String("name: ", nameMetric), zap.Float64("value: ", increment))
 }
 
 func (m *MemStorage) GetCounter(nameMetric string) (int64, error) {

@@ -3,7 +3,6 @@ package agent
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"time"
 
@@ -23,16 +22,16 @@ type Agent struct {
 }
 
 func NewAgent(svc *service.MetricsService, cfg *config.Config) *Agent {
-	log.Println("Initializing Agent...")
+	logger.Log.Info("Initializing Agent...")
 	agent := &Agent{
 		ServerAddress:  cfg.ServerAddress,
 		ReportInterval: cfg.ReportInterval,
 		PollInterval:   cfg.PollInterval,
 		Service:        svc,
 	}
-	log.Println("Server Address:", agent.ServerAddress)
-	log.Println("Report Interval:", agent.ReportInterval)
-	log.Println("Poll Interval:", agent.PollInterval)
+	logger.Log.Info("Server address", zap.String("address: ", agent.ServerAddress))
+	logger.Log.Info("Report Interval:", zap.Int("report interval: ", agent.ReportInterval))
+	logger.Log.Info("Poll Interval:", zap.Int("poll interval: ", agent.PollInterval))
 	return agent
 }
 

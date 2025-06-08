@@ -41,6 +41,7 @@ func (s *MetricsService) SaveGauge(name string, value float64, ctx context.Conte
 		logger.Log.Info("Saving gague to file")
 		if err := s.SaveMetricsToFile(s.config.FileStoragePath); err != nil {
 			logger.Log.Error("Failed to save to file", zap.Error(err))
+			return err
 		}
 		return s.SaveMetricsToFile(s.config.FileStoragePath)
 	}
@@ -66,6 +67,7 @@ func (s *MetricsService) SaveCounter(name string, delta int64, ctx context.Conte
 		logger.Log.Info("Saving gague to file")
 		if err := s.SaveMetricsToFile(s.config.FileStoragePath); err != nil {
 			logger.Log.Error("Failed to save to file", zap.Error(err))
+			return err
 		}
 		return s.SaveMetricsToFile(s.config.FileStoragePath)
 	}
