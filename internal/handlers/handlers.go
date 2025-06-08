@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	"github.com/fatkulllin/metrilo/internal/logger"
+	"github.com/fatkulllin/metrilo/internal/metrics"
 	"github.com/fatkulllin/metrilo/internal/models"
 	service "github.com/fatkulllin/metrilo/internal/service/server"
 	"github.com/go-chi/chi"
@@ -28,14 +29,14 @@ func (h *Handlers) SaveMetrics(res http.ResponseWriter, req *http.Request) {
 	valueMetric := chi.URLParam(req, "value")
 
 	switch typeMetric {
-	case "counter":
+	case metrics.Counter:
 		incrementValue, err := strconv.ParseInt(valueMetric, 10, 64)
 		if err != nil {
 			res.WriteHeader(http.StatusBadRequest)
 			return
 		}
 		h.service.SaveCounter(nameMetric, incrementValue, req.Context())
-	case "gauge":
+	case metrics.Gauge:
 		floatValue, err := strconv.ParseFloat(valueMetric, 64)
 		if err != nil {
 			res.WriteHeader(http.StatusBadRequest)
@@ -83,7 +84,7 @@ func (h *Handlers) SaveJSONMetrics(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 	switch typeMetric {
-	case "counter":
+	case metrics.Counter:
 		if r.Delta == nil {
 			http.Error(res, "missing required field: delta for counter", http.StatusBadRequest)
 			return
@@ -92,14 +93,14 @@ func (h *Handlers) SaveJSONMetrics(res http.ResponseWriter, req *http.Request) {
 		h.service.SaveCounter(nameMetric, valueMetric, req.Context())
 		resp, err := json.Marshal(models.Metrics{
 			ID:    nameMetric,
-			MType: "counter",
+			MType: metrics.Counter,
 			Delta: &valueMetric,
 		})
 		if err != nil {
 			logger.Log.Error(err.Error())
 		}
 		res.Write(resp)
-	case "gauge":
+	case metrics.Gauge:
 		if r.Value == nil {
 			http.Error(res, "missing required field: value for counter", http.StatusBadRequest)
 			return
@@ -108,7 +109,7 @@ func (h *Handlers) SaveJSONMetrics(res http.ResponseWriter, req *http.Request) {
 		h.service.SaveGauge(nameMetric, valueMetric, req.Context())
 		resp, err := json.Marshal(models.Metrics{
 			ID:    nameMetric,
-			MType: "gauge",
+			MType: metrics.Gauge,
 			Value: &valueMetric,
 		})
 		if err != nil {
@@ -127,7 +128,7 @@ func (h *Handlers) GetMetric(res http.ResponseWriter, req *http.Request) {
 
 	switch typeMetric {
 
-	case "counter":
+	case metrics.Counter:
 		result, err := h.service.GetCounter(nameMetric, req.Context())
 		if err != nil {
 			res.WriteHeader(http.StatusNotFound)
@@ -135,7 +136,7 @@ func (h *Handlers) GetMetric(res http.ResponseWriter, req *http.Request) {
 		}
 		io.WriteString(res, strconv.FormatInt(result, 10))
 
-	case "gauge":
+	case metrics.Gauge:
 		result, err := h.service.GetGauge(nameMetric, req.Context())
 		if err != nil {
 			res.WriteHeader(http.StatusNotFound)
@@ -167,7 +168,7 @@ func (h *Handlers) GetMetricJSON(res http.ResponseWriter, req *http.Request) {
 
 	switch typeMetric {
 
-	case "counter":
+	case metrics.Counter:
 		result, err := h.service.GetCounter(nameMetric, req.Context())
 		if err != nil {
 			res.WriteHeader(http.StatusNotFound)
@@ -183,7 +184,7 @@ func (h *Handlers) GetMetricJSON(res http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-	case "gauge":
+	case metrics.Gauge:
 		result, err := h.service.GetGauge(nameMetric, req.Context())
 		if err != nil {
 			res.WriteHeader(http.StatusNotFound)
@@ -236,23 +237,23 @@ func (h *Handlers) UpdateMetrics(res http.ResponseWriter, req *http.Request) {
 		zap.String("url", req.URL.String()),
 	)
 
-	metrics := make([]models.Metrics, 0)
+	metricsSlice := make([]models.Metrics, 0)
 
 	logger.Log.Info("decoding request")
 
 	decode := json.NewDecoder(req.Body)
 
-	if err := decode.Decode(&metrics); err != nil {
+	if err := decode.Decode(&metricsSlice); err != nil {
 		logger.Log.Error("cannot decode request JSON body", zap.Error(err))
 		res.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	logger.Log.Info("parsed request", zap.Any("request", metrics))
+	logger.Log.Info("parsed request", zap.Any("request", metricsSlice))
 
-	for _, v := range metrics {
+	for _, v := range metricsSlice {
 		switch v.MType {
-		case "counter":
+		case metrics.Counter:
 			if v.Delta == nil {
 				errMsg := fmt.Sprintf("missing field: delta for counter %q", v.MType)
 				logger.Log.Warn("invalid request", zap.String("error", errMsg))
@@ -264,7 +265,7 @@ func (h *Handlers) UpdateMetrics(res http.ResponseWriter, req *http.Request) {
 				http.Error(res, "DB connect is not available", http.StatusInternalServerError)
 				return
 			}
-		case "gauge":
+		case metrics.Gauge:
 			if v.Value == nil {
 				errMsg := fmt.Sprintf("missing field: value for gauge %q", v.MType)
 				logger.Log.Warn("invalid request", zap.String("error", errMsg))
