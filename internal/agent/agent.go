@@ -78,46 +78,11 @@ func (agent *Agent) Run() error {
 				return nil
 			}
 			err = agent.Service.SendToServer(client, http.MethodPost, endpoint, bodyBuf)
-			return err
-			// fmt.Println("Send metrics")
-			// go func() {
-			// 	for k, v := range agent.Service.GetMetrics().Gauge {
-			// 		fmt.Printf("Send Gauge type http://%v/update/ key: %v value:%v\n", agent.ServerAddress, k, v)
-			// 		reqBody, err := json.Marshal(models.Metrics{
-			// 			ID:    k,
-			// 			MType: "gauge",
-			// 			Value: &v,
-			// 		})
-			// 		if err != nil {
-			// 			logger.Log.Error(err.Error())
-			// 		}
-			// 		bodyBuf, err := gzip.GzipCompress(reqBody)
-			// 		if err != nil {
-			// 			logger.Log.Error("Error compress gague body", zap.String("error", err.Error()), zap.String("request body", string(reqBody)))
-			// 			return
-			// 		}
-			// 		agent.Service.SendToServer(client, http.MethodPost, endpoint, bodyBuf)
-			// 	}
-			// }()
-			// go func() {
-			// 	for k, v := range agent.Service.GetMetrics().Counter {
-			// 		fmt.Printf("Send Counter type http://%v/update/ key: %v value:%v\n", agent.ServerAddress, k, v)
-			// 		reqBody, err := json.Marshal(models.Metrics{
-			// 			ID:    k,
-			// 			MType: "counter",
-			// 			Delta: &v,
-			// 		})
-			// 		if err != nil {
-			// 			logger.Log.Error(err.Error())
-			// 		}
-			// 		bodyBuf, err := gzip.GzipCompress(reqBody)
-			// 		if err != nil {
-			// 			logger.Log.Error("Error compress gauge body", zap.String("error", err.Error()), zap.String("request body", string(reqBody)))
-			// 			return
-			// 		}
-			// 		agent.Service.SendToServer(client, http.MethodPost, endpoint, bodyBuf)
-			// 	}
-			// }()
+			if err != nil {
+				logger.Log.Error("Failed to send metrics after retries",
+					zap.Error(err),
+					zap.String("endpoint", endpoint))
+			}
 		}
 	}
 }
