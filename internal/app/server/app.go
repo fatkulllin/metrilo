@@ -68,7 +68,7 @@ func NewApp(cfg *config.Config) *App {
 			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 			// не забываем освободить ресурс
 			defer cancel()
-			_, err := migrateConnect.QueryContext(ctx, "CREATE TABLE IF NOT EXISTS counter(name varchar(40) primary key, value integer);")
+			_, err := migrateConnect.QueryContext(ctx, "CREATE TABLE IF NOT EXISTS counter(name varchar(40) primary key, value bigint);")
 			if err != nil {
 				logger.Log.Error(err.Error())
 			}
