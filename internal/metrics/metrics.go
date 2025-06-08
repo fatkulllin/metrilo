@@ -40,6 +40,8 @@ const (
 	TotalAlloc    = "TotalAlloc"
 	RandomValue   = "RandomValue"
 	PollCount     = "PollCount"
+	Counter       = "counter"
+	Gauge         = "gauge"
 )
 
 func NewMetrics() *Metrics {

@@ -6,10 +6,9 @@ import (
 	"io"
 	"net/http"
 	"strconv"
-	"strings"
-	"unicode"
 
 	"github.com/fatkulllin/metrilo/internal/logger"
+	"github.com/fatkulllin/metrilo/internal/metrics"
 	"github.com/fatkulllin/metrilo/internal/models"
 	service "github.com/fatkulllin/metrilo/internal/service/server"
 	"github.com/go-chi/chi"
@@ -30,32 +29,30 @@ func (h *Handlers) SaveMetrics(res http.ResponseWriter, req *http.Request) {
 	valueMetric := chi.URLParam(req, "value")
 
 	switch typeMetric {
-	case "counter":
+	case metrics.Counter:
 		incrementValue, err := strconv.ParseInt(valueMetric, 10, 64)
 		if err != nil {
 			res.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		h.service.SaveCounter(nameMetric, incrementValue)
-	case "gauge":
+		h.service.SaveCounter(nameMetric, incrementValue, req.Context())
+	case metrics.Gauge:
 		floatValue, err := strconv.ParseFloat(valueMetric, 64)
 		if err != nil {
 			res.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		h.service.SaveGauge(nameMetric, floatValue)
+		if err := h.service.SaveGauge(nameMetric, floatValue, req.Context()); err != nil {
+			res.Write([]byte(err.Error()))
+			res.WriteHeader(http.StatusBadRequest)
+			return
+		}
 
 	default:
 		http.Error(res, "Unknown type", http.StatusBadRequest)
 		return
 	}
 	res.WriteHeader(http.StatusOK)
-}
-
-func isLetter(s string) bool {
-	return !strings.ContainsFunc(s, func(r rune) bool {
-		return !unicode.IsLetter(r)
-	})
 }
 
 func (h *Handlers) SaveJSONMetrics(res http.ResponseWriter, req *http.Request) {
@@ -78,7 +75,6 @@ func (h *Handlers) SaveJSONMetrics(res http.ResponseWriter, req *http.Request) {
 	typeMetric := r.MType
 	nameMetric := r.ID
 
-	// if isLetter(nameMetric) {
 	if req.Header.Get("Content-Type") != "application/json" {
 		http.Error(res, "Only Content-Type: application/json header are allowed!!", http.StatusMethodNotAllowed)
 		return
@@ -88,32 +84,32 @@ func (h *Handlers) SaveJSONMetrics(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 	switch typeMetric {
-	case "counter":
+	case metrics.Counter:
 		if r.Delta == nil {
 			http.Error(res, "missing required field: delta for counter", http.StatusBadRequest)
 			return
 		}
 		valueMetric := *r.Delta
-		h.service.SaveCounter(nameMetric, valueMetric)
+		h.service.SaveCounter(nameMetric, valueMetric, req.Context())
 		resp, err := json.Marshal(models.Metrics{
 			ID:    nameMetric,
-			MType: "counter",
+			MType: metrics.Counter,
 			Delta: &valueMetric,
 		})
 		if err != nil {
 			logger.Log.Error(err.Error())
 		}
 		res.Write(resp)
-	case "gauge":
+	case metrics.Gauge:
 		if r.Value == nil {
 			http.Error(res, "missing required field: value for counter", http.StatusBadRequest)
 			return
 		}
 		valueMetric := *r.Value
-		h.service.SaveGauge(nameMetric, valueMetric)
+		h.service.SaveGauge(nameMetric, valueMetric, req.Context())
 		resp, err := json.Marshal(models.Metrics{
 			ID:    nameMetric,
-			MType: "gauge",
+			MType: metrics.Gauge,
 			Value: &valueMetric,
 		})
 		if err != nil {
@@ -126,24 +122,22 @@ func (h *Handlers) SaveJSONMetrics(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
-// }
-
 func (h *Handlers) GetMetric(res http.ResponseWriter, req *http.Request) {
 	typeMetric := chi.URLParam(req, "type")
 	nameMetric := chi.URLParam(req, "name")
 
 	switch typeMetric {
 
-	case "counter":
-		result, err := h.service.GetCounter(nameMetric)
+	case metrics.Counter:
+		result, err := h.service.GetCounter(nameMetric, req.Context())
 		if err != nil {
 			res.WriteHeader(http.StatusNotFound)
 			return
 		}
 		io.WriteString(res, strconv.FormatInt(result, 10))
 
-	case "gauge":
-		result, err := h.service.GetGauge(nameMetric)
+	case metrics.Gauge:
+		result, err := h.service.GetGauge(nameMetric, req.Context())
 		if err != nil {
 			res.WriteHeader(http.StatusNotFound)
 			return
@@ -157,6 +151,7 @@ func (h *Handlers) GetMetric(res http.ResponseWriter, req *http.Request) {
 }
 
 func (h *Handlers) GetMetricJSON(res http.ResponseWriter, req *http.Request) {
+	fmt.Println("a")
 	var r models.Metrics
 	logger.Log.Info("decoding request")
 
@@ -173,8 +168,8 @@ func (h *Handlers) GetMetricJSON(res http.ResponseWriter, req *http.Request) {
 
 	switch typeMetric {
 
-	case "counter":
-		result, err := h.service.GetCounter(nameMetric)
+	case metrics.Counter:
+		result, err := h.service.GetCounter(nameMetric, req.Context())
 		if err != nil {
 			res.WriteHeader(http.StatusNotFound)
 			return
@@ -189,8 +184,8 @@ func (h *Handlers) GetMetricJSON(res http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-	case "gauge":
-		result, err := h.service.GetGauge(nameMetric)
+	case metrics.Gauge:
+		result, err := h.service.GetGauge(nameMetric, req.Context())
 		if err != nil {
 			res.WriteHeader(http.StatusNotFound)
 			return
@@ -224,4 +219,68 @@ func (h *Handlers) AllGetMetrics(res http.ResponseWriter, req *http.Request) {
 	}
 
 	fmt.Fprintln(res, "</ul>")
+}
+
+func (h *Handlers) PingDatabase(res http.ResponseWriter, req *http.Request) {
+	err := h.service.PingDatabase()
+	if err != nil {
+		logger.Log.Error("database is not connected", zap.Error(err))
+		res.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	res.WriteHeader(http.StatusOK)
+}
+
+func (h *Handlers) UpdateMetrics(res http.ResponseWriter, req *http.Request) {
+	logger.Log.Info("Request:",
+		zap.String("method", req.Method),
+		zap.String("url", req.URL.String()),
+	)
+
+	metricsSlice := make([]models.Metrics, 0)
+
+	logger.Log.Info("decoding request")
+
+	decode := json.NewDecoder(req.Body)
+
+	if err := decode.Decode(&metricsSlice); err != nil {
+		logger.Log.Error("cannot decode request JSON body", zap.Error(err))
+		res.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	logger.Log.Info("parsed request", zap.Any("request", metricsSlice))
+
+	for _, v := range metricsSlice {
+		switch v.MType {
+		case metrics.Counter:
+			if v.Delta == nil {
+				errMsg := fmt.Sprintf("missing field: delta for counter %q", v.MType)
+				logger.Log.Warn("invalid request", zap.String("error", errMsg))
+				http.Error(res, errMsg, http.StatusBadRequest)
+			}
+			err := h.service.SaveCounter(v.ID, *v.Delta, req.Context())
+			if err != nil {
+				logger.Log.Error(err.Error())
+				http.Error(res, "DB connect is not available", http.StatusInternalServerError)
+				return
+			}
+		case metrics.Gauge:
+			if v.Value == nil {
+				errMsg := fmt.Sprintf("missing field: value for gauge %q", v.MType)
+				logger.Log.Warn("invalid request", zap.String("error", errMsg))
+				http.Error(res, errMsg, http.StatusBadRequest)
+			}
+			err := h.service.SaveGauge(v.ID, *v.Value, req.Context())
+			if err != nil {
+				logger.Log.Error(err.Error())
+				http.Error(res, "DB connect is not available", http.StatusInternalServerError)
+				return
+			}
+		default:
+			errMsg := fmt.Sprintf("bad request: unsupported metric type %q", v.MType)
+			logger.Log.Warn("invalid request", zap.String("error", errMsg))
+			http.Error(res, errMsg, http.StatusBadRequest)
+		}
+	}
 }

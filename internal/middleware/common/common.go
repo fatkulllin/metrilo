@@ -33,11 +33,9 @@ func isLetter(s string) bool {
 func CheckReqHeaderMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		metricName := chi.URLParam(req, "name")
-		if isLetter(metricName) {
-			if req.Header.Get("Content-Type") != "text/plain" {
-				http.Error(res, "Only Content-Type: text/plain header are allowed!!", http.StatusMethodNotAllowed)
-				return
-			}
+		if isLetter(metricName) && req.Header.Get("Content-Type") != "text/plain" {
+			http.Error(res, "Only Content-Type: text/plain header are allowed!!", http.StatusMethodNotAllowed)
+			return
 		}
 		next.ServeHTTP(res, req)
 	})

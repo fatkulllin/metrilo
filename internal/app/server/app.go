@@ -1,14 +1,18 @@
 package app
 
 import (
+	"context"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	config "github.com/fatkulllin/metrilo/internal/config/server"
+	"github.com/fatkulllin/metrilo/internal/database"
 	"github.com/fatkulllin/metrilo/internal/handlers"
 	"github.com/fatkulllin/metrilo/internal/logger"
+	"github.com/fatkulllin/metrilo/internal/retry"
 	"github.com/fatkulllin/metrilo/internal/server"
 	service "github.com/fatkulllin/metrilo/internal/service/server"
 	"github.com/fatkulllin/metrilo/internal/storage"
@@ -22,11 +26,26 @@ type App struct {
 	handlers *handlers.Handlers
 	server   *server.Server
 	ticker   *ticker.Ticker
+	db       *database.Database
 }
 
 func NewApp(cfg *config.Config) *App {
 	memStore := storage.NewMemoryStorage()
-	service := service.NewMetricsService(memStore, cfg.StoreInterval, cfg.FileStoragePath)
+	var db *database.Database
+	var err error
+	if cfg.WasDatabaseSet {
+		retry.Do(3, func() error {
+			db, err = database.NewDatabase(cfg.Database)
+			if err != nil {
+				logger.Log.Warn("Error connect to DB", zap.String("error", err.Error()))
+				db = nil
+				return err
+			}
+			return nil
+		}, retry.IsPGError)
+	}
+
+	service := service.NewMetricsService(memStore, cfg, db)
 	handlers := handlers.NewHandlers(service)
 	server := server.NewServer(handlers, cfg)
 
@@ -44,12 +63,29 @@ func NewApp(cfg *config.Config) *App {
 		log.Println("Read metrics from file okay")
 	}
 
+	if db != nil {
+		if migrateConnect, _ := db.GetDB(); migrateConnect != nil {
+			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+			// не забываем освободить ресурс
+			defer cancel()
+			_, err := migrateConnect.QueryContext(ctx, "CREATE TABLE IF NOT EXISTS counter(name varchar(40) primary key, value bigint);")
+			if err != nil {
+				logger.Log.Error(err.Error())
+			}
+			_, err = migrateConnect.QueryContext(ctx, "CREATE TABLE IF NOT EXISTS gauge(name varchar(40) primary key, value double precision);")
+			if err != nil {
+				logger.Log.Error(err.Error())
+			}
+		}
+	}
+
 	return &App{
 		memStore: memStore,
 		service:  service,
 		handlers: handlers,
 		server:   server,
 		ticker:   tick,
+		db:       db,
 	}
 }
 
@@ -78,5 +114,13 @@ func (a *App) Run() {
 		logger.Log.Error("Error save metrics to file", zap.String("error", err.Error()))
 	}
 	logger.Log.Info("Successfully save metrics to file")
-	logger.Log.Info("graceful shutdown")
+
+	if a.db != nil {
+		if err := a.db.Close(); err != nil {
+			logger.Log.Error("Error closing DB", zap.String("error", err.Error()))
+		}
+		logger.Log.Info("Successfully closed DB connection")
+	}
+
+	logger.Log.Info("Graceful shutdown")
 }
