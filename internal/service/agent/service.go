@@ -2,6 +2,9 @@ package service
 
 import (
 	"bytes"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -37,6 +40,18 @@ func (s *MetricsService) SendToServer(client *http.Client, method string, endpoi
 	}
 	req.Header.Add("Content-Encoding", "gzip")
 	req.Header.Add("Content-Type", "application/json")
+
+	secretkey := []byte("secretkey")
+	// подписываем алгоритмом HMAC, используя SHA-256
+	h := hmac.New(sha256.New, secretkey)
+	h.Write([]byte(reqBody))
+	sign := h.Sum(nil)
+
+	fmt.Printf("%x\n", sign)
+	encodeSign := hex.EncodeToString(sign)
+
+	req.Header.Add("HashSHA256", encodeSign)
+
 	response, err := client.Do(req)
 	if err != nil {
 		logger.Log.Error("Error sending request", zap.Error(err))

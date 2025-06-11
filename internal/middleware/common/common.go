@@ -1,6 +1,12 @@
 package common
 
 import (
+	"bytes"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
+	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"unicode"
@@ -91,6 +97,31 @@ func ValidateTypeMetricMiddleware(next http.Handler) http.Handler {
 		if typeMetric != "gauge" && typeMetric != "counter" {
 			res.WriteHeader(http.StatusBadRequest)
 			return
+		}
+		next.ServeHTTP(res, req)
+	})
+}
+
+func DecodeMsg(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+
+		secretkey := []byte("secretkey")
+		bodyBytes, _ := io.ReadAll(req.Body)
+		req.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+		encodeHeader := req.Header.Get("HashSHA256")
+		data, err := hex.DecodeString(encodeHeader)
+		if err != nil {
+			panic(err)
+		}
+		h := hmac.New(sha256.New, secretkey)
+		h.Write(bodyBytes)
+		sign := h.Sum(nil)
+		fmt.Printf("%x\n", sign)
+
+		if hmac.Equal(data, sign) {
+			fmt.Println("Подпись подлинная")
+		} else {
+			fmt.Println("Подпись неверна. Где-то ошибка")
 		}
 		next.ServeHTTP(res, req)
 	})

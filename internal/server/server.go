@@ -35,7 +35,9 @@ func (server *Server) Start() {
 
 	r := chi.NewRouter()
 	r.Use(logging.RequestLogger) // logging.ResponseLogger
+	r.Use(common.DecodeMsg)
 	r.Use(compressor.GzipMiddleware)
+
 	r.Route("/update", func(r chi.Router) {
 		r.Use(
 			common.MethodPostOnlyMiddleware,
