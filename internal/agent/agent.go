@@ -61,7 +61,6 @@ func (agent *Agent) Run() error {
 					Value: &v})
 			}
 			for k, v := range agent.Service.GetMetrics().Counter {
-				fmt.Println(k, v)
 				metrics = append(metrics, models.Metrics{
 					ID:    k,
 					MType: "counter",

@@ -5,13 +5,14 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
-	"fmt"
 	"io"
 	"net/http"
 	"strings"
 	"unicode"
 
+	"github.com/fatkulllin/metrilo/internal/logger"
 	"github.com/go-chi/chi"
+	"go.uber.org/zap"
 )
 
 func SetHeaderTextMiddleware(next http.Handler) http.Handler {
@@ -111,17 +112,19 @@ func DecodeMsg(next http.Handler) http.Handler {
 		encodeHeader := req.Header.Get("HashSHA256")
 		data, err := hex.DecodeString(encodeHeader)
 		if err != nil {
-			panic(err)
+			logger.Log.Error("hex decode", zap.Error(err))
 		}
 		h := hmac.New(sha256.New, secretkey)
 		h.Write(bodyBytes)
 		sign := h.Sum(nil)
-		fmt.Printf("%x\n", sign)
 
 		if hmac.Equal(data, sign) {
-			fmt.Println("Подпись подлинная")
+			logger.Log.Info("Signature is correct")
+			res.Header().Set("HashSHA256", encodeHeader)
 		} else {
-			fmt.Println("Подпись неверна. Где-то ошибка")
+			logger.Log.Info("The signature is incorrect. There is a mistake somewhere.")
+			res.WriteHeader(http.StatusBadRequest)
+			return
 		}
 		next.ServeHTTP(res, req)
 	})

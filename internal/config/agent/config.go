@@ -13,6 +13,7 @@ type Config struct {
 	ServerAddress  string `env:"ADDRESS"`
 	ReportInterval int    `env:"REPORT_INTERVAL"`
 	PollInterval   int    `env:"POLL_INTERVAL"`
+	Key            string `env:"KEY"`
 }
 
 func validateAddress(s string) error {
@@ -30,6 +31,7 @@ func LoadConfig() *Config {
 	pflag.StringVarP(&config.ServerAddress, "address", "a", "localhost:8080", "set host:port for server")
 	pflag.IntVarP(&config.ReportInterval, "reportInterval", "r", 10, "frequency send")
 	pflag.IntVarP(&config.PollInterval, "pollInterval", "p", 2, "refresh metric")
+	pflag.StringVarP(&config.Key, "key", "k", "", "key secret")
 	pflag.Parse()
 
 	err := env.Parse(&config)
@@ -45,5 +47,6 @@ func LoadConfig() *Config {
 		ServerAddress:  config.ServerAddress,
 		ReportInterval: config.ReportInterval,
 		PollInterval:   config.PollInterval,
+		Key:            config.Key,
 	}
 }

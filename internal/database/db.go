@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/fatkulllin/metrilo/internal/logger"
@@ -20,7 +19,6 @@ type Database struct {
 func NewDatabase(dsn string) (*Database, error) {
 
 	db, err := sql.Open("pgx", dsn)
-	fmt.Println(dsn)
 	if err != nil {
 		return nil, err
 	}

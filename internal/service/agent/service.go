@@ -47,7 +47,6 @@ func (s *MetricsService) SendToServer(client *http.Client, method string, endpoi
 	h.Write([]byte(reqBody))
 	sign := h.Sum(nil)
 
-	fmt.Printf("%x\n", sign)
 	encodeSign := hex.EncodeToString(sign)
 
 	req.Header.Add("HashSHA256", encodeSign)

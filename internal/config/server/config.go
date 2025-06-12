@@ -19,6 +19,7 @@ type Config struct {
 	Restore         bool   `env:"RESTORE"`
 	Database        string `env:"DATABASE_DSN"`
 	WasDatabaseSet  bool
+	Key             string `env:"KEY"`
 }
 
 func validateAddress(s string) error {
@@ -39,6 +40,7 @@ func LoadConfig() *Config {
 	pflag.StringVarP(&config.FileStoragePath, "path", "f", ".temp", "set path/filename")
 	pflag.BoolVarP(&config.Restore, "restore", "r", false, "set true/false")
 	pflag.StringVarP(&config.Database, "database", "d", "", "set database dsn")
+	pflag.StringVarP(&config.Key, "key", "k", "", "key secret")
 	pflag.Parse()
 
 	err := env.Parse(&config)
@@ -76,5 +78,6 @@ func LoadConfig() *Config {
 		Restore:         config.Restore,
 		Database:        config.Database,
 		WasDatabaseSet:  config.WasDatabaseSet,
+		Key:             config.Key,
 	}
 }
