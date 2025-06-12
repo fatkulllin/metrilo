@@ -19,6 +19,7 @@ type Agent struct {
 	ReportInterval int
 	PollInterval   int
 	Service        *service.MetricsService
+	config         *config.Config
 }
 
 func NewAgent(svc *service.MetricsService, cfg *config.Config) *Agent {
@@ -28,6 +29,7 @@ func NewAgent(svc *service.MetricsService, cfg *config.Config) *Agent {
 		ReportInterval: cfg.ReportInterval,
 		PollInterval:   cfg.PollInterval,
 		Service:        svc,
+		config:         cfg,
 	}
 	logger.Log.Info("Server address", zap.String("address: ", agent.ServerAddress))
 	logger.Log.Info("Report Interval:", zap.Int("report interval: ", agent.ReportInterval))
@@ -75,7 +77,7 @@ func (agent *Agent) Run() error {
 				logger.Log.Error("Error compress gague body", zap.String("error", err.Error()), zap.String("request body", string(reqBody)))
 				return nil
 			}
-			err = agent.Service.SendToServer(client, http.MethodPost, endpoint, bodyBuf)
+			err = agent.Service.SendToServer(client, http.MethodPost, endpoint, bodyBuf, agent.config.WasKeySet, []byte(agent.config.Key))
 			if err != nil {
 				logger.Log.Error("Failed to send metrics after retries",
 					zap.Error(err),

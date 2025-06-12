@@ -31,7 +31,7 @@ func (s *MetricsService) GetMetrics() *metrics.Metrics {
 	return s.metrics
 }
 
-func (s *MetricsService) SendToServer(client *http.Client, method string, endpoint string, reqBody []byte) error {
+func (s *MetricsService) SendToServer(client *http.Client, method string, endpoint string, reqBody []byte, wasKeySet bool, key []byte) error {
 
 	req, err := http.NewRequest(method, endpoint, bytes.NewBuffer(reqBody))
 	if err != nil {

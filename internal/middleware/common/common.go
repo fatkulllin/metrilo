@@ -103,29 +103,37 @@ func ValidateTypeMetricMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-func DecodeMsg(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+func NewDecodeMsgMiddleware(secretKey []byte, wasKeySet bool) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+			if !wasKeySet {
+				next.ServeHTTP(res, req)
+				return
+			}
+			bodyBytes, _ := io.ReadAll(req.Body)
+			req.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
 
-		secretkey := []byte("secretkey")
-		bodyBytes, _ := io.ReadAll(req.Body)
-		req.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
-		encodeHeader := req.Header.Get("HashSHA256")
-		data, err := hex.DecodeString(encodeHeader)
-		if err != nil {
-			logger.Log.Error("hex decode", zap.Error(err))
-		}
-		h := hmac.New(sha256.New, secretkey)
-		h.Write(bodyBytes)
-		sign := h.Sum(nil)
+			encodeHeader := req.Header.Get("HashSHA256")
+			data, err := hex.DecodeString(encodeHeader)
+			if err != nil {
+				logger.Log.Error("hex decode", zap.Error(err))
+				res.WriteHeader(http.StatusBadRequest)
+				return
+			}
 
-		if hmac.Equal(data, sign) {
-			logger.Log.Info("Signature is correct")
-			res.Header().Set("HashSHA256", encodeHeader)
-		} else {
-			logger.Log.Info("The signature is incorrect. There is a mistake somewhere.")
-			res.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		next.ServeHTTP(res, req)
-	})
+			h := hmac.New(sha256.New, secretKey)
+			h.Write(bodyBytes)
+			sign := h.Sum(nil)
+
+			if hmac.Equal(data, sign) {
+				logger.Log.Info("Signature is correct")
+				res.Header().Set("HashSHA256", encodeHeader)
+			} else {
+				logger.Log.Info("The signature is incorrect. There is a mistake somewhere.")
+				res.WriteHeader(http.StatusBadRequest)
+				return
+			}
+			next.ServeHTTP(res, req)
+		})
+	}
 }

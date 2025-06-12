@@ -20,6 +20,7 @@ type Config struct {
 	Database        string `env:"DATABASE_DSN"`
 	WasDatabaseSet  bool
 	Key             string `env:"KEY"`
+	WasKeySet       bool
 }
 
 func validateAddress(s string) error {
@@ -35,6 +36,7 @@ func LoadConfig() *Config {
 	config.WasPathSet = false
 	config.WasDatabaseSet = false
 	config.WasIntervalSet = false
+	config.WasKeySet = false
 	pflag.StringVarP(&config.Address, "address", "a", "localhost:8080", "set host:port")
 	pflag.IntVarP(&config.StoreInterval, "interval", "i", 300, "set interval")
 	pflag.StringVarP(&config.FileStoragePath, "path", "f", ".temp", "set path/filename")
@@ -59,6 +61,9 @@ func LoadConfig() *Config {
 		}
 		if f.Name == "database" {
 			config.WasDatabaseSet = true
+		}
+		if f.Name == "key" {
+			config.WasKeySet = true
 		}
 	})
 

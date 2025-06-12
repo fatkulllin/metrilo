@@ -17,13 +17,14 @@ import (
 type Server struct {
 	Address  string
 	handlers *handlers.Handlers
+	config   *config.Config
 }
 
 func NewServer(handlers *handlers.Handlers, cfg *config.Config) *Server {
 	logger.Log.Info("Initializing server...")
 	server := &Server{
-		Address:  cfg.Address,
 		handlers: handlers,
+		config:   cfg,
 	}
 	logger.Log.Info("Server URL:", zap.String("server", server.Address))
 	return server
@@ -35,7 +36,7 @@ func (server *Server) Start() {
 
 	r := chi.NewRouter()
 	r.Use(logging.RequestLogger) // logging.ResponseLogger
-	r.Use(common.DecodeMsg)
+	r.Use(common.NewDecodeMsgMiddleware([]byte(server.config.Key), server.config.WasKeySet))
 	r.Use(compressor.GzipMiddleware)
 
 	r.Route("/update", func(r chi.Router) {
@@ -62,7 +63,7 @@ func (server *Server) Start() {
 	r.Get("/ping", server.handlers.PingDatabase)
 	r.Post("/updates/", server.handlers.UpdateMetrics)
 
-	err := http.ListenAndServe(server.Address, r)
+	err := http.ListenAndServe(server.config.Address, r)
 	if err != nil {
 		log.Fatalf("Server failed to start: %v", err)
 	}
