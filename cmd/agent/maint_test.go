@@ -1,6 +1,7 @@
 package main
 
 import (
+	"sync"
 	"testing"
 
 	"github.com/fatkulllin/metrilo/internal/metrics"
@@ -44,8 +45,9 @@ var allowedCounterMetrics = map[string]struct{}{
 
 func TestColleMetrics(t *testing.T) {
 	t.Run("Check counter", func(t *testing.T) {
+		var m sync.RWMutex
 		metriki := metrics.NewMetrics()
-		metriki.CollectMetrics()
+		metriki.CollectMetrics(&m)
 		for k := range metriki.Counter {
 			_, exists := allowedCounterMetrics[k]
 			assert.True(t, exists, "Ключ %v должен существовать", k)
