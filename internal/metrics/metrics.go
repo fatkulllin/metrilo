@@ -1,8 +1,14 @@
 package metrics
 
 import (
+	"fmt"
 	"math/rand/v2"
 	"runtime"
+	"sync"
+	"time"
+
+	"github.com/shirou/gopsutil/v4/cpu"
+	"github.com/shirou/gopsutil/v4/mem"
 )
 
 type Metrics struct {
@@ -11,37 +17,40 @@ type Metrics struct {
 }
 
 const (
-	Alloc         = "Alloc"
-	BuckHashSys   = "BuckHashSys"
-	Frees         = "Frees"
-	GCCPUFraction = "GCCPUFraction"
-	GCSys         = "GCSys"
-	HeapAlloc     = "HeapAlloc"
-	HeapIdle      = "HeapIdle"
-	HeapInuse     = "HeapInuse"
-	HeapObjects   = "HeapObjects"
-	HeapReleased  = "HeapReleased"
-	HeapSys       = "HeapSys"
-	LastGC        = "LastGC"
-	Lookups       = "Lookups"
-	MCacheInuse   = "MCacheInuse"
-	MCacheSys     = "MCacheSys"
-	MSpanInuse    = "MSpanInuse"
-	MSpanSys      = "MSpanSys"
-	Mallocs       = "Mallocs"
-	NextGC        = "NextGC"
-	NumForcedGC   = "NumForcedGC"
-	NumGC         = "NumGC"
-	OtherSys      = "OtherSys"
-	PauseTotalNs  = "PauseTotalNs"
-	StackInuse    = "StackInuse"
-	StackSys      = "StackSys"
-	Sys           = "Sys"
-	TotalAlloc    = "TotalAlloc"
-	RandomValue   = "RandomValue"
-	PollCount     = "PollCount"
-	Counter       = "counter"
-	Gauge         = "gauge"
+	Alloc          = "Alloc"
+	BuckHashSys    = "BuckHashSys"
+	Frees          = "Frees"
+	GCCPUFraction  = "GCCPUFraction"
+	GCSys          = "GCSys"
+	HeapAlloc      = "HeapAlloc"
+	HeapIdle       = "HeapIdle"
+	HeapInuse      = "HeapInuse"
+	HeapObjects    = "HeapObjects"
+	HeapReleased   = "HeapReleased"
+	HeapSys        = "HeapSys"
+	LastGC         = "LastGC"
+	Lookups        = "Lookups"
+	MCacheInuse    = "MCacheInuse"
+	MCacheSys      = "MCacheSys"
+	MSpanInuse     = "MSpanInuse"
+	MSpanSys       = "MSpanSys"
+	Mallocs        = "Mallocs"
+	NextGC         = "NextGC"
+	NumForcedGC    = "NumForcedGC"
+	NumGC          = "NumGC"
+	OtherSys       = "OtherSys"
+	PauseTotalNs   = "PauseTotalNs"
+	StackInuse     = "StackInuse"
+	StackSys       = "StackSys"
+	Sys            = "Sys"
+	TotalAlloc     = "TotalAlloc"
+	RandomValue    = "RandomValue"
+	PollCount      = "PollCount"
+	Counter        = "counter"
+	Gauge          = "gauge"
+	TotalMemory    = "TotalMemory"
+	FreeMemory     = "FreeMemory"
+	CPUutilization = "CPUutilization"
 )
 
 func NewMetrics() *Metrics {
@@ -51,11 +60,10 @@ func NewMetrics() *Metrics {
 	}
 }
 
-func (m *Metrics) CollectMetrics() {
-
+func (m *Metrics) CollectMetrics(sync *sync.RWMutex) {
+	sync.Lock()
 	memstats := runtime.MemStats{}
 	runtime.ReadMemStats(&memstats)
-
 	m.Gauge[Alloc] = float64(memstats.Alloc)
 	m.Gauge[BuckHashSys] = float64(memstats.BuckHashSys)
 	m.Gauge[Frees] = float64(memstats.Frees)
@@ -85,4 +93,30 @@ func (m *Metrics) CollectMetrics() {
 	m.Gauge[TotalAlloc] = float64(memstats.TotalAlloc)
 	m.Gauge[RandomValue] = rand.Float64()
 	m.Counter[PollCount] += 1
+	sync.Unlock()
+}
+
+func (m *Metrics) CollectGopsutilMetrics(sync *sync.RWMutex) error {
+
+	v, err := mem.VirtualMemory()
+	if err != nil {
+		return fmt.Errorf("error collect gopsutil metrics: %w", err)
+	}
+
+	usages, err := cpu.Percent(time.Second, true)
+	if err != nil {
+		return fmt.Errorf("error collect gopsutil metrics: %w", err)
+	}
+
+	sync.Lock()
+	defer sync.Unlock()
+	m.Gauge[TotalMemory] = float64(v.Total)
+	m.Gauge[FreeMemory] = float64(v.Free)
+
+	for k, v := range usages {
+		name := fmt.Sprintf("%s%d", CPUutilization, k+1)
+		m.Gauge[name] = v
+	}
+
+	return nil
 }

@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sync"
 
 	"github.com/fatkulllin/metrilo/internal/logger"
 	"github.com/fatkulllin/metrilo/internal/metrics"
@@ -23,8 +24,12 @@ func NewMetricsService(metrics *metrics.Metrics) *MetricsService {
 	return &MetricsService{metrics: metrics}
 }
 
-func (s *MetricsService) CollectMetrics() {
-	s.metrics.CollectMetrics()
+func (s *MetricsService) CollectMetrics(m *sync.RWMutex) {
+	s.metrics.CollectMetrics(m)
+}
+
+func (s *MetricsService) CollectGopsutilMetrics(m *sync.RWMutex) {
+	s.metrics.CollectGopsutilMetrics(m)
 }
 
 func (s *MetricsService) GetMetrics() *metrics.Metrics {
