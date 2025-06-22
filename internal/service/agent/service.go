@@ -51,8 +51,8 @@ func (s *MetricsService) SendToServer(client *http.Client, method string, endpoi
 	}
 
 	if response.StatusCode != http.StatusOK {
-		logger.Log.Error("Request failed with status:", zap.String("error", err.Error()))
+		logger.Log.Error("Request failed with", zap.Int("status", response.StatusCode))
 	}
-	fmt.Printf("Тело ответа: %s\n", body)
+	fmt.Printf("Тело ответа: %s\n%d", body, response.StatusCode)
 	return body, response.StatusCode
 }
