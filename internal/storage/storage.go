@@ -14,13 +14,6 @@ import (
 	"go.uber.org/zap"
 )
 
-type Repositories interface {
-	SaveGauge(name string, value float64)
-	SaveCounter(name string, value int64)
-	GetCounter(name string)
-	GetGauge(name string)
-}
-
 type MemStorage struct {
 	Gauge   map[string]float64 `json:"Gauge"`
 	Counter map[string]int64   `json:"Counter"`

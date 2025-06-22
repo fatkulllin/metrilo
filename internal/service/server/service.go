@@ -6,21 +6,24 @@ import (
 	"fmt"
 	"time"
 
-	config "github.com/fatkulllin/metrilo/internal/config/server"
-	"github.com/fatkulllin/metrilo/internal/database"
 	"github.com/fatkulllin/metrilo/internal/logger"
 	"github.com/fatkulllin/metrilo/internal/storage"
 	"go.uber.org/zap"
 )
 
-type MetricsService struct {
-	store  *storage.MemStorage
-	config *config.Config
-	db     *database.Database
+type Repositories interface {
+	SaveGauge(name string, value float64)
+	SaveCounter(name string, value int64)
+	GetCounter(name string)
+	GetGauge(name string)
 }
 
-func NewMetricsService(store *storage.MemStorage, config *config.Config, db *database.Database) *MetricsService {
-	return &MetricsService{store: store, config: config, db: db}
+type MetricsService struct {
+	repo Repositories
+}
+
+func NewMetricsService(repo Repositories) *MetricsService {
+	return &MetricsService{repo: Repositories}
 }
 
 func (s *MetricsService) SaveGauge(name string, value float64, ctx context.Context) error {

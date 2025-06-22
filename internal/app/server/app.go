@@ -45,7 +45,9 @@ func NewApp(cfg *config.Config) *App {
 		}, retry.IsPGError)
 	}
 
-	service := service.NewMetricsService(memStore, cfg, db)
+	repo := storage.NewMemoryStorage()
+
+	service := service.NewMetricsService(repo)
 	handlers := handlers.NewHandlers(service)
 	server := server.NewServer(handlers, cfg)
 
@@ -78,6 +80,9 @@ func NewApp(cfg *config.Config) *App {
 			}
 		}
 	}
+
+	liba
+	binary
 
 	return &App{
 		memStore: memStore,
