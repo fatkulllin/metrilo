@@ -15,19 +15,15 @@ import (
 )
 
 type Server struct {
-	Address  string
-	handlers *handlers.Handlers
-	config   *config.Config
+	handlers handlers.Handlers
+	config   config.Config
 }
 
-func NewServer(handlers *handlers.Handlers, cfg *config.Config) *Server {
-	logger.Log.Info("Initializing server...")
-	server := &Server{
+func NewServer(handlers handlers.Handlers, cfg config.Config) *Server {
+	return &Server{
 		handlers: handlers,
 		config:   cfg,
 	}
-	logger.Log.Info("Server URL:", zap.String("server", server.Address))
-	return server
 }
 
 func (server *Server) Start() {

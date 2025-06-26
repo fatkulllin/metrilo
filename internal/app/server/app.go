@@ -15,7 +15,7 @@ import (
 	"github.com/fatkulllin/metrilo/internal/retry"
 	"github.com/fatkulllin/metrilo/internal/server"
 	service "github.com/fatkulllin/metrilo/internal/service/server"
-	"github.com/fatkulllin/metrilo/internal/storage"
+	"github.com/fatkulllin/metrilo/internal/storage/mem"
 	"github.com/fatkulllin/metrilo/internal/ticker"
 	"go.uber.org/zap"
 )
@@ -45,8 +45,7 @@ func NewApp(cfg *config.Config) *App {
 		}, retry.IsPGError)
 	}
 
-	repo := storage.NewMemoryStorage()
-
+	repo := mem.NewMemoryStorage()
 	service := service.NewMetricsService(repo)
 	handlers := handlers.NewHandlers(service)
 	server := server.NewServer(handlers, cfg)

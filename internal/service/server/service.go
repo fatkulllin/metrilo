@@ -11,45 +11,20 @@ import (
 	"go.uber.org/zap"
 )
 
-type Repositories interface {
-	SaveGauge(name string, value float64)
-	SaveCounter(name string, value int64)
-	GetCounter(name string)
-	GetGauge(name string)
+type Buisnes interface {
 }
 
 type MetricsService struct {
-	repo Repositories
+	repo storage.Repositories
 }
 
-func NewMetricsService(repo Repositories) *MetricsService {
-	return &MetricsService{repo: Repositories}
+func NewMetricsService(repo storage.Repositories) *MetricsService {
+	return &MetricsService{repo: repo}
 }
 
-func (s *MetricsService) SaveGauge(name string, value float64, ctx context.Context) error {
+func (s *MetricsService) SaveGaugeASD(name string, value float64, ctx context.Context) {
 
-	if s.config.WasDatabaseSet {
-		dbConnect, err := s.db.GetDB()
-		if err != nil {
-			logger.Log.Error("Can not get DB connection", zap.Error(err))
-			return err
-		}
-		logger.Log.Info("Save metric to DB", zap.String("gauge", name))
-		return s.store.SaveGaugeToDB(dbConnect, name, value, ctx)
-	}
-
-	s.store.SaveGauge(name, value)
-
-	if s.config.StoreInterval == 0 || (s.config.WasPathSet && s.config.WasIntervalSet) {
-		logger.Log.Info("Saving gague to file")
-		if err := s.SaveMetricsToFile(s.config.FileStoragePath); err != nil {
-			logger.Log.Error("Failed to save to file", zap.Error(err))
-			return err
-		}
-		return s.SaveMetricsToFile(s.config.FileStoragePath)
-	}
-
-	return nil
+	s.repo.SaveGauge("AAA", 1.0)
 }
 
 func (s *MetricsService) SaveCounter(name string, delta int64, ctx context.Context) error {
