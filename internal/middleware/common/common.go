@@ -1,11 +1,18 @@
 package common
 
 import (
+	"bytes"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
+	"io"
 	"net/http"
 	"strings"
 	"unicode"
 
+	"github.com/fatkulllin/metrilo/internal/logger"
 	"github.com/go-chi/chi"
+	"go.uber.org/zap"
 )
 
 func SetHeaderTextMiddleware(next http.Handler) http.Handler {
@@ -33,11 +40,9 @@ func isLetter(s string) bool {
 func CheckReqHeaderMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		metricName := chi.URLParam(req, "name")
-		if isLetter(metricName) {
-			if req.Header.Get("Content-Type") != "text/plain" {
-				http.Error(res, "Only Content-Type: text/plain header are allowed!!", http.StatusMethodNotAllowed)
-				return
-			}
+		if isLetter(metricName) && req.Header.Get("Content-Type") != "text/plain" {
+			http.Error(res, "Only Content-Type: text/plain header are allowed!!", http.StatusMethodNotAllowed)
+			return
 		}
 		next.ServeHTTP(res, req)
 	})
@@ -96,4 +101,39 @@ func ValidateTypeMetricMiddleware(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(res, req)
 	})
+}
+
+func NewDecodeMsgMiddleware(secretKey []byte, wasKeySet bool) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+			if !wasKeySet {
+				next.ServeHTTP(res, req)
+				return
+			}
+			bodyBytes, _ := io.ReadAll(req.Body)
+			req.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+
+			encodeHeader := req.Header.Get("HashSHA256")
+			data, err := hex.DecodeString(encodeHeader)
+			if err != nil {
+				logger.Log.Error("hex decode", zap.Error(err))
+				res.WriteHeader(http.StatusBadRequest)
+				return
+			}
+
+			h := hmac.New(sha256.New, secretKey)
+			h.Write(bodyBytes)
+			sign := h.Sum(nil)
+
+			if hmac.Equal(data, sign) {
+				logger.Log.Info("Signature is correct")
+				res.Header().Set("HashSHA256", encodeHeader)
+			} else {
+				logger.Log.Info("The signature is incorrect. There is a mistake somewhere.")
+				res.WriteHeader(http.StatusBadRequest)
+				return
+			}
+			next.ServeHTTP(res, req)
+		})
+	}
 }
