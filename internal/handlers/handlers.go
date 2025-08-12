@@ -6,8 +6,6 @@ import (
 	"io"
 	"net/http"
 	"strconv"
-	"strings"
-	"unicode"
 
 	"github.com/fatkulllin/metrilo/internal/logger"
 	"github.com/fatkulllin/metrilo/internal/models"
@@ -36,26 +34,24 @@ func (h *Handlers) SaveMetrics(res http.ResponseWriter, req *http.Request) {
 			res.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		h.service.SaveCounter(nameMetric, incrementValue)
+		h.service.SaveCounter(nameMetric, incrementValue, req.Context())
 	case "gauge":
 		floatValue, err := strconv.ParseFloat(valueMetric, 64)
 		if err != nil {
 			res.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		h.service.SaveGauge(nameMetric, floatValue)
+		if err := h.service.SaveGauge(nameMetric, floatValue, req.Context()); err != nil {
+			res.Write([]byte(err.Error()))
+			res.WriteHeader(http.StatusBadRequest)
+			return
+		}
 
 	default:
 		http.Error(res, "Unknown type", http.StatusBadRequest)
 		return
 	}
 	res.WriteHeader(http.StatusOK)
-}
-
-func isLetter(s string) bool {
-	return !strings.ContainsFunc(s, func(r rune) bool {
-		return !unicode.IsLetter(r)
-	})
 }
 
 func (h *Handlers) SaveJSONMetrics(res http.ResponseWriter, req *http.Request) {
@@ -78,7 +74,6 @@ func (h *Handlers) SaveJSONMetrics(res http.ResponseWriter, req *http.Request) {
 	typeMetric := r.MType
 	nameMetric := r.ID
 
-	// if isLetter(nameMetric) {
 	if req.Header.Get("Content-Type") != "application/json" {
 		http.Error(res, "Only Content-Type: application/json header are allowed!!", http.StatusMethodNotAllowed)
 		return
@@ -94,7 +89,7 @@ func (h *Handlers) SaveJSONMetrics(res http.ResponseWriter, req *http.Request) {
 			return
 		}
 		valueMetric := *r.Delta
-		h.service.SaveCounter(nameMetric, valueMetric)
+		h.service.SaveCounter(nameMetric, valueMetric, req.Context())
 		resp, err := json.Marshal(models.Metrics{
 			ID:    nameMetric,
 			MType: "counter",
@@ -110,7 +105,7 @@ func (h *Handlers) SaveJSONMetrics(res http.ResponseWriter, req *http.Request) {
 			return
 		}
 		valueMetric := *r.Value
-		h.service.SaveGauge(nameMetric, valueMetric)
+		h.service.SaveGauge(nameMetric, valueMetric, req.Context())
 		resp, err := json.Marshal(models.Metrics{
 			ID:    nameMetric,
 			MType: "gauge",
@@ -125,8 +120,6 @@ func (h *Handlers) SaveJSONMetrics(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 }
-
-// }
 
 func (h *Handlers) GetMetric(res http.ResponseWriter, req *http.Request) {
 	typeMetric := chi.URLParam(req, "type")
@@ -224,4 +217,14 @@ func (h *Handlers) AllGetMetrics(res http.ResponseWriter, req *http.Request) {
 	}
 
 	fmt.Fprintln(res, "</ul>")
+}
+
+func (h *Handlers) PingDatabase(res http.ResponseWriter, req *http.Request) {
+	err := h.service.PingDatabase()
+	if err != nil {
+		logger.Log.Error("database is not connected", zap.Error(err))
+		res.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	res.WriteHeader(http.StatusOK)
 }

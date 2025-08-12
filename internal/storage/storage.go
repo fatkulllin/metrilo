@@ -2,6 +2,8 @@ package storage
 
 import (
 	"bufio"
+	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -9,6 +11,7 @@ import (
 	"os"
 
 	"github.com/fatkulllin/metrilo/internal/logger"
+	"go.uber.org/zap"
 )
 
 type Repositories interface {
@@ -105,4 +108,23 @@ func (m *MemStorage) ReadMetricsFromFile(filename string) (*MemStorage, error) {
 	}
 
 	return &metrics, err
+}
+
+func (m *MemStorage) SaveGaugeToDB(dbConnect *sql.DB, nameMetric string, increment float64, ctx context.Context) error {
+	_, err := dbConnect.ExecContext(ctx, "INSERT INTO gauge (name, value) VALUES ($1, $2) ON CONFLICT (name) DO UPDATE SET value = EXCLUDED.value;", nameMetric, increment)
+	if err != nil {
+		logger.Log.Error("failed to upsert gauge metrics:", zap.String("error", err.Error()))
+		return err
+	}
+	return nil
+
+}
+
+func (m *MemStorage) SaveCounterToDB(dbConnect *sql.DB, nameMetric string, increment int64, ctx context.Context) error {
+	_, err := dbConnect.ExecContext(ctx, "INSERT INTO counter (name, value) VALUES ($1, $2) ON CONFLICT (name) DO UPDATE SET value = EXCLUDED.value;", nameMetric, increment)
+	if err != nil {
+		logger.Log.Error("failed to upsert counter metrics:", zap.String("error", err.Error()))
+		return err
+	}
+	return nil
 }

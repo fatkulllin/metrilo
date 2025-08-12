@@ -26,9 +26,9 @@ func NewTicker(cfg *config.Config, service *service.MetricsService) *Ticker {
 		service:         service,
 		done:            make(chan struct{}),
 	}
-	logger.Log.Info("Store Interval:", zap.Int("storeInterval", ticker.StoreInterval))
-	logger.Log.Info("File storage path:", zap.String("server", ticker.FileStoragePath))
-	logger.Log.Info("Restore:", zap.Bool("server", ticker.Restore))
+	logger.Log.Info("Store Interval", zap.Int("storeInterval", ticker.StoreInterval))
+	logger.Log.Info("File storage path", zap.String("server", ticker.FileStoragePath))
+	logger.Log.Info("Restore: ", zap.Bool("server", ticker.Restore))
 	return ticker
 }
 
