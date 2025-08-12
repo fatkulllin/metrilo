@@ -1,12 +1,14 @@
 package app
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
 
 	config "github.com/fatkulllin/metrilo/internal/config/server"
+	"github.com/fatkulllin/metrilo/internal/database"
 	"github.com/fatkulllin/metrilo/internal/handlers"
 	"github.com/fatkulllin/metrilo/internal/logger"
 	"github.com/fatkulllin/metrilo/internal/server"
@@ -22,11 +24,18 @@ type App struct {
 	handlers *handlers.Handlers
 	server   *server.Server
 	ticker   *ticker.Ticker
+	db       *database.Database
 }
 
 func NewApp(cfg *config.Config) *App {
 	memStore := storage.NewMemoryStorage()
-	service := service.NewMetricsService(memStore, cfg.StoreInterval, cfg.FileStoragePath)
+	db, err := database.NewDatabase(cfg.Database)
+	if err != nil {
+		logger.Log.Error("Error connect to DB", zap.String("error", err.Error()))
+		db = nil
+	}
+	service := service.NewMetricsService(memStore, cfg.StoreInterval, cfg.FileStoragePath, db)
+	fmt.Println(service)
 	handlers := handlers.NewHandlers(service)
 	server := server.NewServer(handlers, cfg)
 
@@ -50,6 +59,7 @@ func NewApp(cfg *config.Config) *App {
 		handlers: handlers,
 		server:   server,
 		ticker:   tick,
+		db:       db,
 	}
 }
 
@@ -78,5 +88,13 @@ func (a *App) Run() {
 		logger.Log.Error("Error save metrics to file", zap.String("error", err.Error()))
 	}
 	logger.Log.Info("Successfully save metrics to file")
-	logger.Log.Info("graceful shutdown")
+
+	if a.db != nil {
+		if err := a.db.Close(); err != nil {
+			logger.Log.Error("Error closing DB", zap.String("error", err.Error()))
+		}
+		logger.Log.Info("Successfully closed DB connection")
+	}
+
+	logger.Log.Info("Graceful shutdown")
 }
