@@ -6,11 +6,12 @@ import (
 	"fmt"
 	"time"
 
+	"go.uber.org/zap"
+
 	config "github.com/fatkulllin/metrilo/internal/config/server"
 	"github.com/fatkulllin/metrilo/internal/database"
 	"github.com/fatkulllin/metrilo/internal/logger"
 	"github.com/fatkulllin/metrilo/internal/storage"
-	"go.uber.org/zap"
 )
 
 type MetricsService struct {

@@ -6,3 +6,7 @@ test-iter3:
 
 run-test:
 	docker run -v "$$(pwd):/app" gotests task unit-tests
+
+pprof:
+go tool pprof -proto -seconds=30 http://localhost:8080/debug/pprof/heap > profiles/base.pprof
+go tool pprof profiles/base.pprof

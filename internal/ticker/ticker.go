@@ -4,10 +4,11 @@ import (
 	"log"
 	"time"
 
+	"go.uber.org/zap"
+
 	config "github.com/fatkulllin/metrilo/internal/config/server"
 	"github.com/fatkulllin/metrilo/internal/logger"
 	service "github.com/fatkulllin/metrilo/internal/service/server"
-	"go.uber.org/zap"
 )
 
 type Ticker struct {

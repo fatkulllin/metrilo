@@ -6,8 +6,9 @@ import (
 	"net"
 
 	"github.com/caarlos0/env"
-	"github.com/fatkulllin/metrilo/internal/logger"
 	"github.com/spf13/pflag"
+
+	"github.com/fatkulllin/metrilo/internal/logger"
 )
 
 type Config struct {

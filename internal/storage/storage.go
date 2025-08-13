@@ -10,8 +10,9 @@ import (
 	"io"
 	"os"
 
-	"github.com/fatkulllin/metrilo/internal/logger"
 	"go.uber.org/zap"
+
+	"github.com/fatkulllin/metrilo/internal/logger"
 )
 
 type Repositories interface {

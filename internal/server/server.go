@@ -4,14 +4,18 @@ import (
 	"log"
 	"net/http"
 
+	_ "net/http/pprof"
+
+	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/middleware"
+	"go.uber.org/zap"
+
 	config "github.com/fatkulllin/metrilo/internal/config/server"
 	"github.com/fatkulllin/metrilo/internal/handlers"
 	"github.com/fatkulllin/metrilo/internal/logger"
 	"github.com/fatkulllin/metrilo/internal/middleware/common"
 	"github.com/fatkulllin/metrilo/internal/middleware/compressor"
 	"github.com/fatkulllin/metrilo/internal/middleware/logging"
-	"github.com/go-chi/chi"
-	"go.uber.org/zap"
 )
 
 type Server struct {
@@ -26,19 +30,20 @@ func NewServer(handlers *handlers.Handlers, cfg *config.Config) *Server {
 		handlers: handlers,
 		config:   cfg,
 	}
-	logger.Log.Info("Server URL:", zap.String("server", server.Address))
+	logger.Log.Info("Server URL:", zap.String("server", cfg.Address))
 	return server
 }
 
 func (server *Server) Start() {
 
-	logger.Log.Info("Server started on...", zap.Any("server", server.Address))
+	logger.Log.Info("Server started on...", zap.Any("server", server.config.Address))
 
 	r := chi.NewRouter()
+
 	r.Use(logging.RequestLogger) // logging.ResponseLogger
 	r.Use(common.NewDecodeMsgMiddleware([]byte(server.config.Key), server.config.WasKeySet))
 	r.Use(compressor.GzipMiddleware)
-
+	r.Mount("/debug", middleware.Profiler())
 	r.Route("/update", func(r chi.Router) {
 		r.Use(
 			common.MethodPostOnlyMiddleware,

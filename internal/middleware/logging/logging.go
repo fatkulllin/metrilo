@@ -4,8 +4,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/fatkulllin/metrilo/internal/logger"
 	"go.uber.org/zap"
+
+	"github.com/fatkulllin/metrilo/internal/logger"
 )
 
 type (

@@ -7,12 +7,13 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/go-chi/chi"
+	"go.uber.org/zap"
+
 	"github.com/fatkulllin/metrilo/internal/logger"
 	"github.com/fatkulllin/metrilo/internal/metrics"
 	"github.com/fatkulllin/metrilo/internal/models"
 	service "github.com/fatkulllin/metrilo/internal/service/server"
-	"github.com/go-chi/chi"
-	"go.uber.org/zap"
 )
 
 type Handlers struct {

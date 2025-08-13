@@ -6,9 +6,10 @@ import (
 	"errors"
 	"time"
 
-	"github.com/fatkulllin/metrilo/internal/logger"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"go.uber.org/zap"
+
+	"github.com/fatkulllin/metrilo/internal/logger"
 )
 
 type Database struct {

@@ -4,9 +4,10 @@ import (
 	"net/http"
 	"strings"
 
+	"go.uber.org/zap"
+
 	"github.com/fatkulllin/metrilo/internal/gzip"
 	"github.com/fatkulllin/metrilo/internal/logger"
-	"go.uber.org/zap"
 )
 
 func GzipMiddleware(h http.Handler) http.Handler {

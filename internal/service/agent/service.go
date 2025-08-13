@@ -11,9 +11,10 @@ import (
 	"net/http"
 	"sync"
 
+	"go.uber.org/zap"
+
 	"github.com/fatkulllin/metrilo/internal/logger"
 	"github.com/fatkulllin/metrilo/internal/metrics"
-	"go.uber.org/zap"
 )
 
 type MetricsService struct {

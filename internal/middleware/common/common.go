@@ -10,9 +10,10 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/fatkulllin/metrilo/internal/logger"
 	"github.com/go-chi/chi"
 	"go.uber.org/zap"
+
+	"github.com/fatkulllin/metrilo/internal/logger"
 )
 
 func SetHeaderTextMiddleware(next http.Handler) http.Handler {
