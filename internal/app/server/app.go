@@ -81,9 +81,6 @@ func NewApp(cfg *config.Config) *App {
 		}
 	}
 
-	liba
-	binary
-
 	return &App{
 		memStore: memStore,
 		service:  service,

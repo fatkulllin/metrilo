@@ -1,0 +1,10 @@
+{
+   "auths":{
+      "docker-wfm-dev.x5.ru": {
+	"auth": "ZG9ja2VyLXdmbS1kZXYtcnc6RkBwMlIyfHwwM0Ykc2ox"
+      },
+"docker-wfm-test.x5.ru":{
+"auth": "ZG9ja2VyLXdmbS1kZXYtcnc6RkBwMlIyfHwwM0Ykc2ox"
+},
+   }
+}

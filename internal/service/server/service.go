@@ -23,7 +23,7 @@ type MetricsService struct {
 }
 
 func NewMetricsService(repo Repositories) *MetricsService {
-	return &MetricsService{repo: Repositories}
+	return &MetricsService{repo: repo}
 }
 
 func (s *MetricsService) SaveGauge(name string, value float64, ctx context.Context) error {
