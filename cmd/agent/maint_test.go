@@ -4,8 +4,9 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/fatkulllin/metrilo/internal/metrics"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/fatkulllin/metrilo/internal/metrics"
 )
 
 var allowedGaugeMetrics = map[string]struct{}{

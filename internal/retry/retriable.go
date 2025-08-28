@@ -5,10 +5,11 @@ import (
 	"io"
 	"net"
 
-	"github.com/fatkulllin/metrilo/internal/logger"
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5/pgconn"
 	"go.uber.org/zap"
+
+	"github.com/fatkulllin/metrilo/internal/logger"
 )
 
 func IsNetworkError(err error) bool {

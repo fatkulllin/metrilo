@@ -7,12 +7,13 @@ import (
 	"sync"
 	"time"
 
+	"go.uber.org/zap"
+
 	config "github.com/fatkulllin/metrilo/internal/config/agent"
 	"github.com/fatkulllin/metrilo/internal/gzip"
 	"github.com/fatkulllin/metrilo/internal/logger"
 	"github.com/fatkulllin/metrilo/internal/models"
 	service "github.com/fatkulllin/metrilo/internal/service/agent"
-	"go.uber.org/zap"
 )
 
 type Agent struct {

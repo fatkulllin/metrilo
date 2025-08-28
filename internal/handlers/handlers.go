@@ -1,3 +1,6 @@
+// Package handlers содержит HTTP-обработчики (хендлеры) для работы с сервисом сбора метрик.
+// Хендлеры принимают и обрабатывают HTTP-запросы, валидируют входные данные,
+// вызывают соответствующие методы бизнес-логики и формируют HTTP-ответы
 package handlers
 
 import (
@@ -7,22 +10,30 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/go-chi/chi"
+	"go.uber.org/zap"
+
 	"github.com/fatkulllin/metrilo/internal/logger"
 	"github.com/fatkulllin/metrilo/internal/metrics"
 	"github.com/fatkulllin/metrilo/internal/models"
 	service "github.com/fatkulllin/metrilo/internal/service/server"
-	"github.com/go-chi/chi"
-	"go.uber.org/zap"
 )
 
+// Handlers — структура, объединяющая HTTP-хендлеры для работы с метриками.
+// Использует MetricsService для сохранения, получения и обновления значений метрик.
 type Handlers struct {
 	service *service.MetricsService
 }
 
+// NewHandlers создаёт новый экземпляр Handlers.
+// Принимает MetricsService, через который хендлеры работают с данными.
 func NewHandlers(service *service.MetricsService) *Handlers {
 	return &Handlers{service: service}
 }
 
+// SaveMetrics обрабатывает HTTP-запрос для сохранения метрики через путь вида
+// /update/{type}/{name}/{value}. Поддерживает типы counter и gauge.
+// В случае ошибки валидации возвращает HTTP 400.
 func (h *Handlers) SaveMetrics(res http.ResponseWriter, req *http.Request) {
 	typeMetric := chi.URLParam(req, "type")
 	nameMetric := chi.URLParam(req, "name")
@@ -55,6 +66,9 @@ func (h *Handlers) SaveMetrics(res http.ResponseWriter, req *http.Request) {
 	res.WriteHeader(http.StatusOK)
 }
 
+// SaveJSONMetrics обрабатывает HTTP-запрос с JSON-телом для сохранения метрики.
+// Ожидает Content-Type: application/json и структуру Metrics в теле запроса.
+// Возвращает сохранённую метрику в JSON-формате.
 func (h *Handlers) SaveJSONMetrics(res http.ResponseWriter, req *http.Request) {
 	logger.Log.Info("Request:",
 		zap.String("method", req.Method),
@@ -122,6 +136,8 @@ func (h *Handlers) SaveJSONMetrics(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
+// GetMetric возвращает значение метрики в текстовом виде по её типу и имени.
+// Параметры передаются через путь /value/{type}/{name}.
 func (h *Handlers) GetMetric(res http.ResponseWriter, req *http.Request) {
 	typeMetric := chi.URLParam(req, "type")
 	nameMetric := chi.URLParam(req, "name")
@@ -150,6 +166,8 @@ func (h *Handlers) GetMetric(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
+// GetMetricJSON возвращает значение метрики в JSON-формате.
+// Ожидает JSON-запрос с полями ID и MType.
 func (h *Handlers) GetMetricJSON(res http.ResponseWriter, req *http.Request) {
 	var r models.Metrics
 	logger.Log.Info("decoding request")
@@ -205,6 +223,7 @@ func (h *Handlers) GetMetricJSON(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
+// AllGetMetrics выводит HTML-страницу со списком всех сохранённых метрик.
 func (h *Handlers) AllGetMetrics(res http.ResponseWriter, req *http.Request) {
 	metricsGauge, metricsCounter := h.service.GetMetrics()
 
@@ -220,6 +239,8 @@ func (h *Handlers) AllGetMetrics(res http.ResponseWriter, req *http.Request) {
 	fmt.Fprintln(res, "</ul>")
 }
 
+// PingDatabase выполняет проверку доступности базы данных.
+// Возвращает HTTP 200, если соединение установлено, иначе HTTP 500.
 func (h *Handlers) PingDatabase(res http.ResponseWriter, req *http.Request) {
 	err := h.service.PingDatabase()
 	if err != nil {
@@ -230,6 +251,9 @@ func (h *Handlers) PingDatabase(res http.ResponseWriter, req *http.Request) {
 	res.WriteHeader(http.StatusOK)
 }
 
+// UpdateMetrics принимает JSON-массив метрик и обновляет их значения в хранилище.
+// Для каждой метрики проверяет наличие обязательных полей (Delta для counter, Value для gauge).
+// При ошибке сохранения возвращает HTTP 500.
 func (h *Handlers) UpdateMetrics(res http.ResponseWriter, req *http.Request) {
 	logger.Log.Info("Request:",
 		zap.String("method", req.Method),
