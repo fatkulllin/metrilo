@@ -1,6 +1,7 @@
 package server
 
 import (
+	"crypto/rsa"
 	"log"
 	"net/http"
 
@@ -11,6 +12,7 @@ import (
 	"go.uber.org/zap"
 
 	config "github.com/fatkulllin/metrilo/internal/config/server"
+	"github.com/fatkulllin/metrilo/internal/encoder"
 	"github.com/fatkulllin/metrilo/internal/handlers"
 	"github.com/fatkulllin/metrilo/internal/logger"
 	"github.com/fatkulllin/metrilo/internal/middleware/common"
@@ -19,16 +21,18 @@ import (
 )
 
 type Server struct {
-	Address  string
-	handlers *handlers.Handlers
-	config   *config.Config
+	Address    string
+	handlers   *handlers.Handlers
+	config     *config.Config
+	privateKey *rsa.PrivateKey
 }
 
-func NewServer(handlers *handlers.Handlers, cfg *config.Config) *Server {
+func NewServer(handlers *handlers.Handlers, cfg *config.Config, privateKey *rsa.PrivateKey) *Server {
 	logger.Log.Info("Initializing server...")
 	server := &Server{
-		handlers: handlers,
-		config:   cfg,
+		handlers:   handlers,
+		config:     cfg,
+		privateKey: privateKey,
 	}
 	logger.Log.Info("Server URL:", zap.String("server", cfg.Address))
 	return server
@@ -39,9 +43,10 @@ func (server *Server) Start() {
 	logger.Log.Info("Server started on...", zap.Any("server", server.config.Address))
 
 	r := chi.NewRouter()
-
+	label := []byte("agent")
 	r.Use(logging.RequestLogger) // logging.ResponseLogger
 	r.Use(common.NewDecodeMsgMiddleware([]byte(server.config.Key), server.config.WasKeySet))
+	r.Use(encoder.DecodeMiddleware(server.privateKey, label))
 	r.Use(compressor.GzipMiddleware)
 	r.Mount("/debug", middleware.Profiler())
 	r.Route("/update", func(r chi.Router) {

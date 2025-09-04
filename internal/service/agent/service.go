@@ -38,7 +38,6 @@ func (s *MetricsService) GetMetrics() *metrics.Metrics {
 }
 
 func (s *MetricsService) SendToServer(client *http.Client, method string, endpoint string, reqBody []byte, wasKeySet bool, key []byte) error {
-
 	req, err := http.NewRequest(method, endpoint, bytes.NewBuffer(reqBody))
 	if err != nil {
 		logger.Log.Error("Failed to create request", zap.Error(err))

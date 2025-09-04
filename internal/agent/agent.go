@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"crypto/rsa"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -10,6 +11,7 @@ import (
 	"go.uber.org/zap"
 
 	config "github.com/fatkulllin/metrilo/internal/config/agent"
+	"github.com/fatkulllin/metrilo/internal/encoder"
 	"github.com/fatkulllin/metrilo/internal/gzip"
 	"github.com/fatkulllin/metrilo/internal/logger"
 	"github.com/fatkulllin/metrilo/internal/models"
@@ -23,9 +25,10 @@ type Agent struct {
 	Service        *service.MetricsService
 	config         *config.Config
 	RateLimit      int
+	PublicKey      *rsa.PublicKey
 }
 
-func NewAgent(svc *service.MetricsService, cfg *config.Config) *Agent {
+func NewAgent(svc *service.MetricsService, cfg *config.Config, publicKey *rsa.PublicKey) *Agent {
 	logger.Log.Info("Initializing Agent...")
 	agent := &Agent{
 		ServerAddress:  cfg.ServerAddress,
@@ -34,6 +37,7 @@ func NewAgent(svc *service.MetricsService, cfg *config.Config) *Agent {
 		Service:        svc,
 		config:         cfg,
 		RateLimit:      cfg.RateLimit,
+		PublicKey:      publicKey,
 	}
 	logger.Log.Info("Server address", zap.String("address: ", agent.ServerAddress))
 	logger.Log.Info("Report Interval:", zap.Int("report interval: ", agent.ReportInterval))
@@ -60,7 +64,7 @@ func (agent *Agent) Run() error {
 
 	workerCount := agent.config.RateLimit
 	for i := range workerCount {
-		go agent.worker(i, jobs)
+		go agent.worker(i, agent.PublicKey, jobs)
 	}
 
 	for {
@@ -100,11 +104,11 @@ func (agent *Agent) buildMetrics() []models.Metrics {
 	return metrics
 }
 
-func (agent *Agent) worker(id int, jobs <-chan []models.Metrics) {
+func (agent *Agent) worker(id int, publicKey *rsa.PublicKey, jobs <-chan []models.Metrics) {
 
 	endpoint := fmt.Sprintf("http://%v/updates/", agent.ServerAddress)
 	client := newHTTPClient()
-
+	label := []byte("agent")
 	for batch := range jobs {
 		reqBody, err := json.Marshal(batch)
 		if err != nil {
@@ -118,7 +122,12 @@ func (agent *Agent) worker(id int, jobs <-chan []models.Metrics) {
 			continue
 		}
 
-		err = agent.Service.SendToServer(client, http.MethodPost, endpoint, gzipped, agent.config.WasKeySet, []byte(agent.config.Key))
+		ciphertext, err := encoder.BuildPacket(agent.PublicKey, gzipped, label)
+		if err != nil {
+			logger.Log.Error("build encode packet error", zap.Error(err))
+			continue
+		}
+		err = agent.Service.SendToServer(client, http.MethodPost, endpoint, ciphertext, agent.config.WasKeySet, []byte(agent.config.Key))
 		if err != nil {
 			logger.Log.Error("Worker failed to send batch", zap.Int("workerID", id), zap.Error(err))
 		} else {

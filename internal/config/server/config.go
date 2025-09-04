@@ -22,6 +22,7 @@ type Config struct {
 	WasDatabaseSet  bool
 	Key             string `env:"KEY"`
 	WasKeySet       bool
+	CryptoKey       string `env:"CRYPTO_KEY"`
 }
 
 func validateAddress(s string) error {
@@ -44,6 +45,7 @@ func LoadConfig() *Config {
 	pflag.BoolVarP(&config.Restore, "restore", "r", false, "set true/false")
 	pflag.StringVarP(&config.Database, "database", "d", "", "set database dsn")
 	pflag.StringVarP(&config.Key, "key", "k", "", "key secret")
+	pflag.StringVarP(&config.CryptoKey, "crypto-key", "c", "./keys/private.pem", "set private key")
 	pflag.Parse()
 
 	err := env.Parse(&config)
@@ -85,5 +87,6 @@ func LoadConfig() *Config {
 		Database:        config.Database,
 		WasDatabaseSet:  config.WasDatabaseSet,
 		Key:             config.Key,
+		CryptoKey:       config.CryptoKey,
 	}
 }

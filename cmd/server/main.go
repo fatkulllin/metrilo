@@ -15,12 +15,6 @@ var (
 )
 
 func main() {
-	logger.Initialize("INFO")
-	config := config.LoadConfig()
-
-	app := app.NewApp(config)
-	app.Run()
-
 	if buildVersion == "" {
 		buildVersion = "N/A"
 	}
@@ -33,4 +27,11 @@ func main() {
 	fmt.Printf("Build version: %s\n", buildVersion)
 	fmt.Printf("Build date: %s\n", buildDate)
 	fmt.Printf("Build commit: %s\n", buildCommit)
+
+	logger.Initialize("INFO")
+	config := config.LoadConfig()
+
+	app := app.NewApp(config)
+	app.Run()
+
 }

@@ -13,6 +13,7 @@ import (
 	config "github.com/fatkulllin/metrilo/internal/config/server"
 	"github.com/fatkulllin/metrilo/internal/database"
 	"github.com/fatkulllin/metrilo/internal/handlers"
+	"github.com/fatkulllin/metrilo/internal/keysmanager"
 	"github.com/fatkulllin/metrilo/internal/logger"
 	"github.com/fatkulllin/metrilo/internal/retry"
 	"github.com/fatkulllin/metrilo/internal/server"
@@ -31,9 +32,13 @@ type App struct {
 }
 
 func NewApp(cfg *config.Config) *App {
+	privateKey, err := keysmanager.LoadPrivateKey(cfg.CryptoKey)
+	if err != nil {
+		logger.Log.Fatal("не удалось получить приватный ключ", zap.Error(err))
+	}
+
 	memStore := storage.NewMemoryStorage()
 	var db *database.Database
-	var err error
 	if cfg.WasDatabaseSet {
 		retry.Do(3, func() error {
 			db, err = database.NewDatabase(cfg.Database)
@@ -48,7 +53,7 @@ func NewApp(cfg *config.Config) *App {
 
 	service := service.NewMetricsService(memStore, cfg, db)
 	handlers := handlers.NewHandlers(service)
-	server := server.NewServer(handlers, cfg)
+	server := server.NewServer(handlers, cfg, privateKey)
 
 	var tick *ticker.Ticker
 
@@ -61,7 +66,7 @@ func NewApp(cfg *config.Config) *App {
 		if err != nil {
 			log.Println("error read metrics from file", err)
 		}
-		log.Println("Read metrics from file okay")
+		log.Println("read metrics from file okay")
 	}
 
 	if db != nil {

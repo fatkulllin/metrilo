@@ -16,6 +16,7 @@ type Config struct {
 	Key            string `env:"KEY"`
 	RateLimit      int    `env:"RATE_LIMIT"`
 	WasKeySet      bool
+	CryptoKey      string `env:"CRYPTO_KEY"`
 }
 
 func validateAddress(s string) error {
@@ -35,6 +36,7 @@ func LoadConfig() *Config {
 	pflag.IntVarP(&config.PollInterval, "pollInterval", "p", 2, "refresh metric")
 	pflag.StringVarP(&config.Key, "key", "k", "", "key secret")
 	pflag.IntVarP(&config.RateLimit, "limit", "l", 1, "send worker rate limit")
+	pflag.StringVarP(&config.CryptoKey, "crypto-key", "", "./keys/public.pem", "set public key")
 	pflag.Parse()
 
 	err := env.Parse(&config)
@@ -57,5 +59,6 @@ func LoadConfig() *Config {
 		PollInterval:   config.PollInterval,
 		Key:            config.Key,
 		RateLimit:      config.RateLimit,
+		CryptoKey:      config.CryptoKey,
 	}
 }
