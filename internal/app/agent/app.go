@@ -1,6 +1,8 @@
 package app
 
 import (
+	"context"
+
 	"github.com/fatkulllin/metrilo/internal/agent"
 	config "github.com/fatkulllin/metrilo/internal/config/agent"
 	"github.com/fatkulllin/metrilo/internal/keysmanager"
@@ -32,6 +34,6 @@ func NewApp(cfg *config.Config) *App {
 	}
 }
 
-func (a *App) Run() {
-	a.agent.Run()
+func (a *App) Run(ctx context.Context) error {
+	return a.agent.Run(ctx)
 }

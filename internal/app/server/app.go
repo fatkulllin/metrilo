@@ -3,9 +3,8 @@ package app
 import (
 	"context"
 	"log"
-	"os"
-	"os/signal"
-	"syscall"
+	"net/http"
+	"sync"
 	"time"
 
 	"go.uber.org/zap"
@@ -95,38 +94,51 @@ func NewApp(cfg *config.Config) *App {
 	}
 }
 
-func (a *App) Run() {
-	sigs := make(chan os.Signal, 1)
+func (a *App) Run(ctx context.Context) error {
+	var wg sync.WaitGroup
+	errCh := make(chan error, 2)
+	wg.Add(1)
 
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-
-	go a.server.Start()
-
-	if a.ticker != nil {
-		go a.ticker.Start()
-	}
-
-	sig := <-sigs
-
-	logger.Log.Info("Get syscall", zap.String("syscall", sig.String()))
-
-	if a.ticker != nil {
-		a.ticker.Stop()
-	}
-
-	err := a.service.SaveMetricsToFile(".temp")
-
-	if err != nil {
-		logger.Log.Error("Error save metrics to file", zap.String("error", err.Error()))
-	}
-	logger.Log.Info("Successfully save metrics to file")
-
-	if a.db != nil {
-		if err := a.db.Close(); err != nil {
-			logger.Log.Error("Error closing DB", zap.String("error", err.Error()))
+	go func() {
+		defer wg.Done()
+		if err := a.server.Start(ctx); err != nil && err != http.ErrServerClosed {
+			logger.Log.Error("server exited with error", zap.Error(err))
+			errCh <- err
 		}
-		logger.Log.Info("Successfully closed DB connection")
+	}()
+
+	if a.ticker != nil {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			a.ticker.Start(ctx)
+		}()
 	}
 
-	logger.Log.Info("Graceful shutdown")
+	select {
+	case <-ctx.Done():
+		logger.Log.Info("context canceled, shutting down...")
+		// сохранить метрики
+		if err := a.service.SaveMetricsToFile(".temp"); err != nil {
+			logger.Log.Error("Error save metrics to file", zap.String("error", err.Error()))
+		} else {
+			logger.Log.Info("Successfully saved metrics to file")
+		}
+
+		// закрыть БД
+		if a.db != nil {
+			if err := a.db.Close(); err != nil {
+				logger.Log.Error("Error closing DB", zap.String("error", err.Error()))
+			} else {
+				logger.Log.Info("Successfully closed DB connection")
+			}
+		}
+	case err := <-errCh:
+		logger.Log.Warn("shutting down due to error")
+		return err
+	}
+
+	wg.Wait()
+	logger.Log.Info("shutdown complete")
+	return nil
 }

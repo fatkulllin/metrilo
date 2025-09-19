@@ -1,11 +1,15 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"os/signal"
+	"syscall"
 
 	app "github.com/fatkulllin/metrilo/internal/app/server"
 	config "github.com/fatkulllin/metrilo/internal/config/server"
 	"github.com/fatkulllin/metrilo/internal/logger"
+	"go.uber.org/zap"
 )
 
 var (
@@ -32,6 +36,9 @@ func main() {
 	config := config.LoadConfig()
 
 	app := app.NewApp(config)
-	app.Run()
-
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
+	defer stop()
+	if err := app.Run(ctx); err != nil {
+		logger.Log.Fatal("app shutdown with error", zap.Error(err))
+	}
 }

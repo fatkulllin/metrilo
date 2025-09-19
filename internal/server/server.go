@@ -1,10 +1,12 @@
 package server
 
 import (
+	"context"
 	"crypto/rsa"
-	"log"
-	"net/http"
+	"fmt"
+	"time"
 
+	"net/http"
 	_ "net/http/pprof"
 
 	"github.com/go-chi/chi"
@@ -25,6 +27,7 @@ type Server struct {
 	handlers   *handlers.Handlers
 	config     *config.Config
 	privateKey *rsa.PrivateKey
+	httpServer *http.Server
 }
 
 func NewServer(handlers *handlers.Handlers, cfg *config.Config, privateKey *rsa.PrivateKey) *Server {
@@ -38,7 +41,7 @@ func NewServer(handlers *handlers.Handlers, cfg *config.Config, privateKey *rsa.
 	return server
 }
 
-func (server *Server) Start() {
+func (server *Server) Start(ctx context.Context) error {
 
 	logger.Log.Info("Server started on...", zap.Any("server", server.config.Address))
 
@@ -73,8 +76,23 @@ func (server *Server) Start() {
 	r.Get("/ping", server.handlers.PingDatabase)
 	r.Post("/updates/", server.handlers.UpdateMetrics)
 
-	err := http.ListenAndServe(server.config.Address, r)
-	if err != nil {
-		log.Fatalf("Server failed to start: %v", err)
+	server.httpServer = &http.Server{
+		Addr:    server.config.Address,
+		Handler: r,
 	}
+
+	go func() {
+		<-ctx.Done()
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if err := server.httpServer.Shutdown(shutdownCtx); err != nil {
+			logger.Log.Error("server shutdown failed", zap.Error(err))
+		}
+	}()
+
+	logger.Log.Info("Server started on", zap.String("server", server.httpServer.Addr))
+	if err := server.httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		return fmt.Errorf("listen and serve failed: %w", err)
+	}
+	return nil
 }
