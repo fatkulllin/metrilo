@@ -3,9 +3,6 @@ name: autotests
 on:
   pull_request:
   push:
-    branches:
-      - main
-      - iter14
 
 jobs:
 
