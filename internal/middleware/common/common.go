@@ -5,7 +5,6 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
-	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -108,16 +107,12 @@ func ValidateTypeMetricMiddleware(next http.Handler) http.Handler {
 func NewDecodeMsgMiddleware(secretKey []byte, wasKeySet bool) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
-			fmt.Println("112312312313")
 			if !wasKeySet {
-				fmt.Println("booooo")
 				next.ServeHTTP(res, req)
 				return
 			}
 			bodyBytes, err := io.ReadAll(req.Body)
-			fmt.Println("1")
 			if err != nil {
-				fmt.Println("1222")
 				http.Error(res, "failed to read request body", http.StatusBadRequest)
 				return
 			}

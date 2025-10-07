@@ -109,7 +109,6 @@ func DecodeMiddleware(privateKey *rsa.PrivateKey, label []byte) func(http.Handle
 				http.Error(res, "failed to parse packet", http.StatusBadRequest)
 				return
 			}
-			fmt.Println(string(plaintext))
 
 			// Подменяем тело запроса на расшифрованное (gzip-сжатый JSON)
 			req.Body = io.NopCloser(bytes.NewReader(plaintext))
