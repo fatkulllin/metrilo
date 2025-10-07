@@ -111,9 +111,12 @@ func NewDecodeMsgMiddleware(secretKey []byte, wasKeySet bool) func(http.Handler)
 				next.ServeHTTP(res, req)
 				return
 			}
-			bodyBytes, _ := io.ReadAll(req.Body)
+			bodyBytes, err := io.ReadAll(req.Body)
+			if err != nil {
+				http.Error(res, "failed to read request body", http.StatusBadRequest)
+				return
+			}
 			req.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
-
 			encodeHeader := req.Header.Get("HashSHA256")
 			data, err := hex.DecodeString(encodeHeader)
 			if err != nil {
@@ -134,6 +137,7 @@ func NewDecodeMsgMiddleware(secretKey []byte, wasKeySet bool) func(http.Handler)
 				res.WriteHeader(http.StatusBadRequest)
 				return
 			}
+			req.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
 			next.ServeHTTP(res, req)
 		})
 	}

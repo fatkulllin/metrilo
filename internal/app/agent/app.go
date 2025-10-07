@@ -1,10 +1,15 @@
 package app
 
 import (
+	"context"
+
 	"github.com/fatkulllin/metrilo/internal/agent"
 	config "github.com/fatkulllin/metrilo/internal/config/agent"
+	"github.com/fatkulllin/metrilo/internal/keysmanager"
+	"github.com/fatkulllin/metrilo/internal/logger"
 	"github.com/fatkulllin/metrilo/internal/metrics"
 	service "github.com/fatkulllin/metrilo/internal/service/agent"
+	"go.uber.org/zap"
 )
 
 type App struct {
@@ -14,9 +19,13 @@ type App struct {
 }
 
 func NewApp(cfg *config.Config) *App {
+	publicKey, err := keysmanager.LoadPublicKey(cfg.CryptoKey)
+	if err != nil {
+		logger.Log.Fatal("не удалось получить публичный ключ", zap.Error(err))
+	}
 	metrics := metrics.NewMetrics()
 	service := service.NewMetricsService(metrics)
-	agent := agent.NewAgent(service, cfg)
+	agent := agent.NewAgent(service, cfg, publicKey)
 
 	return &App{
 		metrics: metrics,
@@ -25,6 +34,6 @@ func NewApp(cfg *config.Config) *App {
 	}
 }
 
-func (a *App) Run() {
-	a.agent.Run()
+func (a *App) Run(ctx context.Context) error {
+	return a.agent.Run(ctx)
 }

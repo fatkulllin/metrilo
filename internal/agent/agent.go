@@ -1,6 +1,8 @@
 package agent
 
 import (
+	"context"
+	"crypto/rsa"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -10,6 +12,7 @@ import (
 	"go.uber.org/zap"
 
 	config "github.com/fatkulllin/metrilo/internal/config/agent"
+	"github.com/fatkulllin/metrilo/internal/encoder"
 	"github.com/fatkulllin/metrilo/internal/gzip"
 	"github.com/fatkulllin/metrilo/internal/logger"
 	"github.com/fatkulllin/metrilo/internal/models"
@@ -23,9 +26,10 @@ type Agent struct {
 	Service        *service.MetricsService
 	config         *config.Config
 	RateLimit      int
+	PublicKey      *rsa.PublicKey
 }
 
-func NewAgent(svc *service.MetricsService, cfg *config.Config) *Agent {
+func NewAgent(svc *service.MetricsService, cfg *config.Config, publicKey *rsa.PublicKey) *Agent {
 	logger.Log.Info("Initializing Agent...")
 	agent := &Agent{
 		ServerAddress:  cfg.ServerAddress,
@@ -34,6 +38,7 @@ func NewAgent(svc *service.MetricsService, cfg *config.Config) *Agent {
 		Service:        svc,
 		config:         cfg,
 		RateLimit:      cfg.RateLimit,
+		PublicKey:      publicKey,
 	}
 	logger.Log.Info("Server address", zap.String("address: ", agent.ServerAddress))
 	logger.Log.Info("Report Interval:", zap.Int("report interval: ", agent.ReportInterval))
@@ -46,39 +51,51 @@ func newHTTPClient() *http.Client {
 	return client
 }
 
-func (agent *Agent) Run() error {
+func (agent *Agent) Run(ctx context.Context) error {
 	pollInterval := time.NewTicker(time.Duration(agent.PollInterval) * time.Second)
 	defer pollInterval.Stop()
 	reportInterval := time.NewTicker(time.Duration(agent.ReportInterval) * time.Second)
 	defer reportInterval.Stop()
 
 	var m sync.RWMutex
+	jobs := make(chan []models.Metrics, 10)
 
-	jobs := make(chan []models.Metrics, 5)
-
-	var collected []models.Metrics
-
+	var wg sync.WaitGroup
 	workerCount := agent.config.RateLimit
-	for i := range workerCount {
-		go agent.worker(i, jobs)
+	for i := 0; i < workerCount; i++ {
+		wg.Add(1)
+		go func(id int) {
+			defer wg.Done()
+			agent.worker(ctx, id, agent.PublicKey, jobs)
+		}(i)
 	}
 
 	for {
 		select {
+		case <-ctx.Done():
+			logger.Log.Info("Agent shutting down...")
+
+			close(jobs)
+			wg.Wait()
+			logger.Log.Info("Agent stopped gracefully")
+			return nil
+
 		case <-pollInterval.C:
-			go agent.Service.CollectMetrics(&m)
-			go agent.Service.CollectGopsutilMetrics(&m)
+			agent.Service.CollectMetrics(&m)
+			agent.Service.CollectGopsutilMetrics(&m)
+
 		case <-reportInterval.C:
 			m.RLock()
-			collected = agent.buildMetrics()
+			collected := agent.buildMetrics()
 			m.RUnlock()
+
 			batchSize := 10
 			for i := 0; i < len(collected); i += batchSize {
 				end := min(i+batchSize, len(collected))
 				batch := collected[i:end]
-				jobs <- batch // Кладём в очередь
+
+				jobs <- batch
 			}
-			// close(jobs)
 		}
 	}
 }
@@ -100,10 +117,10 @@ func (agent *Agent) buildMetrics() []models.Metrics {
 	return metrics
 }
 
-func (agent *Agent) worker(id int, jobs <-chan []models.Metrics) {
-
+func (agent *Agent) worker(ctx context.Context, id int, publicKey *rsa.PublicKey, jobs <-chan []models.Metrics) {
 	endpoint := fmt.Sprintf("http://%v/updates/", agent.ServerAddress)
 	client := newHTTPClient()
+	label := []byte("agent")
 
 	for batch := range jobs {
 		reqBody, err := json.Marshal(batch)
@@ -118,11 +135,25 @@ func (agent *Agent) worker(id int, jobs <-chan []models.Metrics) {
 			continue
 		}
 
-		err = agent.Service.SendToServer(client, http.MethodPost, endpoint, gzipped, agent.config.WasKeySet, []byte(agent.config.Key))
+		ciphertext, err := encoder.BuildPacket(publicKey, gzipped, label)
 		if err != nil {
-			logger.Log.Error("Worker failed to send batch", zap.Int("workerID", id), zap.Error(err))
+			logger.Log.Error("Build encode packet error", zap.Error(err))
+			continue
+		}
+
+		// контекст с таймаутом (например, 5 секунд)
+		reqCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+		err = agent.Service.SendToServerWithContext(reqCtx, client, http.MethodPost, endpoint, ciphertext, agent.config.WasKeySet, []byte(agent.config.Key))
+		cancel()
+
+		if err != nil {
+			logger.Log.Error("Worker failed to send batch",
+				zap.Int("workerID", id),
+				zap.Error(err))
 		} else {
-			logger.Log.Info("Worker sent batch", zap.Int("workerID", id), zap.Int("batchSize", len(batch)))
+			logger.Log.Info("Worker sent batch",
+				zap.Int("workerID", id),
+				zap.Int("batchSize", len(batch)))
 		}
 	}
 }

@@ -1,6 +1,7 @@
 package ticker
 
 import (
+	"context"
 	"log"
 	"time"
 
@@ -16,7 +17,6 @@ type Ticker struct {
 	FileStoragePath string
 	Restore         bool
 	service         *service.MetricsService
-	done            chan struct{}
 }
 
 func NewTicker(cfg *config.Config, service *service.MetricsService) *Ticker {
@@ -25,7 +25,6 @@ func NewTicker(cfg *config.Config, service *service.MetricsService) *Ticker {
 		FileStoragePath: cfg.FileStoragePath,
 		Restore:         cfg.Restore,
 		service:         service,
-		done:            make(chan struct{}),
 	}
 	logger.Log.Info("Store Interval", zap.Int("storeInterval", ticker.StoreInterval))
 	logger.Log.Info("File storage path", zap.String("server", ticker.FileStoragePath))
@@ -33,24 +32,21 @@ func NewTicker(cfg *config.Config, service *service.MetricsService) *Ticker {
 	return ticker
 }
 
-func (t *Ticker) Start() {
+func (t *Ticker) Start(ctx context.Context) {
 	storeInterval := time.NewTicker(time.Duration(t.StoreInterval) * time.Second)
 	defer storeInterval.Stop()
+
 	for {
 		select {
+		case <-ctx.Done():
+			logger.Log.Info("Ticker stop")
+			return
 		case <-storeInterval.C:
 			logger.Log.Info("Save metrics to file")
 			err := t.service.SaveMetricsToFile(t.FileStoragePath)
 			if err != nil {
 				log.Println("Error save metrics", err)
 			}
-		case <-t.done:
-			logger.Log.Info("Ticker stop")
-			return
 		}
 	}
-}
-
-func (t *Ticker) Stop() {
-	close(t.done)
 }
