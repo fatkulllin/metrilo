@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rsa"
 	"fmt"
+	"net"
 	"time"
 
 	"net/http"
@@ -20,6 +21,7 @@ import (
 	"github.com/fatkulllin/metrilo/internal/middleware/common"
 	"github.com/fatkulllin/metrilo/internal/middleware/compressor"
 	"github.com/fatkulllin/metrilo/internal/middleware/logging"
+	"github.com/fatkulllin/metrilo/internal/middleware/trustedsubnet"
 )
 
 type Server struct {
@@ -44,10 +46,15 @@ func NewServer(handlers *handlers.Handlers, cfg *config.Config, privateKey *rsa.
 func (server *Server) Start(ctx context.Context) error {
 
 	logger.Log.Info("Server started on...", zap.Any("server", server.config.Address))
+	_, parseTrustedCIDR, err := net.ParseCIDR(server.config.TrustedSubnet)
+	if err != nil {
+		logger.Log.Error("invalid trusted subnet", zap.Error(err))
+	}
 
 	r := chi.NewRouter()
 	label := []byte("agent")
 	r.Use(logging.RequestLogger) // logging.ResponseLogger
+	r.Use(trustedsubnet.TrustedSubnetMiddleware(parseTrustedCIDR))
 	r.Use(common.NewDecodeMsgMiddleware([]byte(server.config.Key), server.config.WasKeySet))
 	r.Use(encoder.DecodeMiddleware(server.privateKey, label))
 	r.Use(compressor.GzipMiddleware)

@@ -43,6 +43,7 @@ func NewAgent(svc *service.MetricsService, cfg *config.Config, publicKey *rsa.Pu
 	logger.Log.Info("Server address", zap.String("address: ", agent.ServerAddress))
 	logger.Log.Info("Report Interval:", zap.Int("report interval: ", agent.ReportInterval))
 	logger.Log.Info("Poll Interval:", zap.Int("poll interval: ", agent.PollInterval))
+	logger.Log.Info("Agent Host IP", zap.String("agent host ip: ", agent.config.AgentHostIP))
 	return agent
 }
 
@@ -121,6 +122,7 @@ func (agent *Agent) worker(ctx context.Context, id int, publicKey *rsa.PublicKey
 	endpoint := fmt.Sprintf("http://%v/updates/", agent.ServerAddress)
 	client := newHTTPClient()
 	label := []byte("agent")
+	hostIP := agent.config.AgentHostIP
 
 	for batch := range jobs {
 		reqBody, err := json.Marshal(batch)
@@ -143,7 +145,7 @@ func (agent *Agent) worker(ctx context.Context, id int, publicKey *rsa.PublicKey
 
 		// контекст с таймаутом (например, 5 секунд)
 		reqCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
-		err = agent.Service.SendToServerWithContext(reqCtx, client, http.MethodPost, endpoint, ciphertext, agent.config.WasKeySet, []byte(agent.config.Key))
+		err = agent.Service.SendToServerWithContext(reqCtx, client, http.MethodPost, endpoint, ciphertext, agent.config.WasKeySet, []byte(agent.config.Key), hostIP)
 		cancel()
 
 		if err != nil {

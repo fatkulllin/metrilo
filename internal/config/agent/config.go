@@ -21,6 +21,7 @@ type Config struct {
 	WasKeySet      bool
 	CryptoKey      string `env:"CRYPTO_KEY"`
 	ConfigFile     string
+	AgentHostIP    string `env:"AGENT_HOST_IP"`
 }
 
 func validateAddress(s string) error {
@@ -42,6 +43,7 @@ func LoadConfig() *Config {
 	pflag.StringVarP(&config.Key, "key", "k", "", "key secret")
 	pflag.IntVarP(&config.RateLimit, "limit", "l", 1, "send worker rate limit")
 	pflag.StringVarP(&config.CryptoKey, "crypto_key", "", "./keys/public.pem", "set public key")
+	pflag.StringVarP(&config.AgentHostIP, "agent_host_ip", "i", "", "set agent ip")
 	pflag.Parse()
 
 	if config.ConfigFile == "" {
@@ -71,9 +73,10 @@ func LoadConfig() *Config {
 			config.PollInterval, _ = strconv.Atoi(f.Value.String())
 		case "crypto_key":
 			config.CryptoKey = f.Value.String()
-
 		case "key":
 			config.WasKeySet = true
+		case "agent_host_ip":
+			config.AgentHostIP = f.Value.String()
 		}
 	})
 
