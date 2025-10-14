@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package metrics;
+
+option go_package = "github.com/fatkulllin/metrilo";
+
+message Metric {
+  string id = 1;        // имя метрики
+  string type = 2;      // "gauge" или "counter"
+  double value = 3;     // для gauge
+  int64 delta = 4;      // для counter
+}
+
+message MetricsBatch {
+  repeated Metric metrics = 1;
+}
+
+message Empty {}
+
+service MetricsService {
+  // Аналог HTTP POST /updates/
+  rpc UpdateMetrics (MetricsBatch) returns (Empty);
+}

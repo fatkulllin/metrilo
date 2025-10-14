@@ -11,6 +11,8 @@ import (
 	config "github.com/fatkulllin/metrilo/internal/config/server"
 	"github.com/fatkulllin/metrilo/internal/database"
 	"github.com/fatkulllin/metrilo/internal/logger"
+	"github.com/fatkulllin/metrilo/internal/metrics"
+	"github.com/fatkulllin/metrilo/internal/models"
 	"github.com/fatkulllin/metrilo/internal/storage"
 )
 
@@ -142,6 +144,37 @@ func (s *MetricsService) PingDatabase() error {
 	defer cancel()
 	if err := dbConnect.PingContext(ctx); err != nil {
 		return fmt.Errorf("ping failed: %w", err)
+	}
+	return nil
+}
+
+func (s *MetricsService) SaveBatch(ctx context.Context, metricsSlice []models.Metrics) error {
+	for _, v := range metricsSlice {
+		switch v.MType {
+		case metrics.Counter:
+			if v.Delta == nil {
+				errMsg := fmt.Sprintf("missing field: delta for counter %q", v.MType)
+				logger.Log.Warn("invalid metric", zap.String("error", errMsg))
+				continue
+			}
+			err := s.SaveCounter(v.ID, *v.Delta, ctx)
+			if err != nil {
+				logger.Log.Error(err.Error())
+				return fmt.Errorf("failed to save counter %s: %w", v.ID, err)
+			}
+		case metrics.Gauge:
+			if v.Value == nil {
+				errMsg := fmt.Sprintf("missing field: value for gauge %q", v.MType)
+				logger.Log.Warn("invalid metric", zap.String("error", errMsg))
+			}
+			err := s.SaveGauge(v.ID, *v.Value, ctx)
+			if err != nil {
+				logger.Log.Error(err.Error())
+				return fmt.Errorf("failed to save gauge %s: %w", v.ID, err)
+			}
+		default:
+			logger.Log.Warn("unsupported metric type", zap.String("type", v.MType))
+		}
 	}
 	return nil
 }

@@ -9,14 +9,16 @@ import (
 	"sync"
 	"time"
 
-	"go.uber.org/zap"
-
 	config "github.com/fatkulllin/metrilo/internal/config/agent"
 	"github.com/fatkulllin/metrilo/internal/encoder"
 	"github.com/fatkulllin/metrilo/internal/gzip"
 	"github.com/fatkulllin/metrilo/internal/logger"
 	"github.com/fatkulllin/metrilo/internal/models"
 	service "github.com/fatkulllin/metrilo/internal/service/agent"
+	proto "github.com/fatkulllin/metrilo/pkg/proto"
+	"go.uber.org/zap"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 type Agent struct {
@@ -50,6 +52,19 @@ func NewAgent(svc *service.MetricsService, cfg *config.Config, publicKey *rsa.Pu
 func newHTTPClient() *http.Client {
 	client := &http.Client{}
 	return client
+}
+
+func createGRPCClient(address, hostIP string) (proto.MetricsServiceClient, *grpc.ClientConn, error) {
+	conn, err := grpc.NewClient(
+		"dns:///"+address,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithUnaryInterceptor(ClientIPInterceptor(hostIP)),
+	)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to connect to gRPC server: %w", err)
+	}
+	client := proto.NewMetricsServiceClient(conn)
+	return client, conn, nil
 }
 
 func (agent *Agent) Run(ctx context.Context) error {
@@ -117,6 +132,28 @@ func (agent *Agent) buildMetrics() []models.Metrics {
 	}
 	return metrics
 }
+func sendToServerGRPC(ctx context.Context, client proto.MetricsServiceClient, batch []models.Metrics) error {
+	metricsProto := make([]*proto.Metric, len(batch))
+	for i, metric := range batch {
+		protoMetric := &proto.Metric{
+			Id:   metric.ID,
+			Type: metric.MType,
+		}
+		if metric.Value != nil {
+			protoMetric.Value = *metric.Value
+		}
+		if metric.Delta != nil {
+			protoMetric.Delta = *metric.Delta
+		}
+		metricsProto[i] = protoMetric
+	}
+	_, err := client.UpdateMetrics(ctx, &proto.MetricsBatch{Metrics: metricsProto})
+	if err != nil {
+		return fmt.Errorf("failed to send metrics via gRPC: %w", err)
+	}
+	logger.Log.Info("Sent metrics batch via gRPC", zap.Int("count", len(batch)))
+	return nil
+}
 
 func (agent *Agent) worker(ctx context.Context, id int, publicKey *rsa.PublicKey, jobs <-chan []models.Metrics) {
 	endpoint := fmt.Sprintf("http://%v/updates/", agent.ServerAddress)
@@ -124,38 +161,69 @@ func (agent *Agent) worker(ctx context.Context, id int, publicKey *rsa.PublicKey
 	label := []byte("agent")
 	hostIP := agent.config.AgentHostIP
 
+	var grpcClient proto.MetricsServiceClient
+	var grpcConn *grpc.ClientConn
+	var err error
+
+	if agent.config.GRPCAddress != "" {
+		grpcClient, grpcConn, err = createGRPCClient(agent.config.GRPCAddress, hostIP)
+		if err != nil {
+			logger.Log.Error("failed to connect gRPC", zap.Error(err))
+			return
+		}
+		defer grpcConn.Close()
+	}
+
 	for batch := range jobs {
-		reqBody, err := json.Marshal(batch)
-		if err != nil {
-			logger.Log.Error("Failed to marshal batch", zap.Error(err))
-			continue
-		}
+		func() {
+			reqCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+			defer cancel()
 
-		gzipped, err := gzip.GzipCompress(reqBody)
-		if err != nil {
-			logger.Log.Error("Failed to gzip batch", zap.Error(err))
-			continue
-		}
+			var reqBody, gzipped, ciphertext []byte
+			var intErr error
 
-		ciphertext, err := encoder.BuildPacket(publicKey, gzipped, label)
-		if err != nil {
-			logger.Log.Error("Build encode packet error", zap.Error(err))
-			continue
-		}
+			if agent.config.GRPCAddress != "" {
+				intErr = sendToServerGRPC(reqCtx, grpcClient, batch)
+			} else {
+				reqBody, intErr = json.Marshal(batch)
+				if intErr != nil {
+					logger.Log.Error("marshal batch", zap.Error(intErr))
+					return
+				}
 
-		// контекст с таймаутом (например, 5 секунд)
-		reqCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
-		err = agent.Service.SendToServerWithContext(reqCtx, client, http.MethodPost, endpoint, ciphertext, agent.config.WasKeySet, []byte(agent.config.Key), hostIP)
-		cancel()
+				gzipped, intErr = gzip.GzipCompress(reqBody)
+				if intErr != nil {
+					logger.Log.Error("gzip batch", zap.Error(intErr))
+					return
+				}
 
-		if err != nil {
-			logger.Log.Error("Worker failed to send batch",
-				zap.Int("workerID", id),
-				zap.Error(err))
-		} else {
-			logger.Log.Info("Worker sent batch",
-				zap.Int("workerID", id),
-				zap.Int("batchSize", len(batch)))
-		}
+				ciphertext, intErr = encoder.BuildPacket(publicKey, gzipped, label)
+				if intErr != nil {
+					logger.Log.Error("build encode packet error", zap.Error(intErr))
+					return
+				}
+
+				intErr = agent.Service.SendToServerWithContext(
+					reqCtx,
+					client,
+					http.MethodPost,
+					endpoint,
+					ciphertext,
+					agent.config.WasKeySet,
+					[]byte(agent.config.Key),
+					hostIP,
+				)
+			}
+
+			if intErr != nil {
+				logger.Log.Error("Worker failed to send batch",
+					zap.Int("workerID", id),
+					zap.Error(intErr))
+			} else {
+				logger.Log.Info("Worker sent batch successfully",
+					zap.Int("workerID", id),
+					zap.Int("batchSize", len(batch)))
+			}
+		}()
 	}
 }

@@ -28,6 +28,7 @@ type Config struct {
 	CryptoKey       string `json:"crypto_key" env:"CRYPTO_KEY"`
 	ConfigFile      string
 	TrustedSubnet   string `json:"trusted_subnet" env:"TRUSTED_SUBNET"`
+	GRPCAddress     string `json:"grpc_address" env:"GRPC_ADDRESS"`
 }
 
 func validateAddress(s string) error {
@@ -53,6 +54,7 @@ func LoadConfig() *Config {
 	pflag.StringVarP(&config.Key, "key", "k", "", "key secret")
 	pflag.StringVarP(&config.CryptoKey, "crypto_key", "", "./keys/private.pem", "set private key")
 	pflag.StringVarP(&config.TrustedSubnet, "trusted_subnet", "t", "", "set CIDR")
+	pflag.StringVarP(&config.GRPCAddress, "grpc_address", "g", "localhost:9090", "set grpc address")
 	pflag.Parse()
 
 	if config.ConfigFile == "" {
@@ -94,7 +96,10 @@ func LoadConfig() *Config {
 			config.CryptoKey = f.Value.String()
 		case "trusted_subnet":
 			config.TrustedSubnet = f.Value.String()
+		case "grpc_address":
+			config.GRPCAddress = f.Value.String()
 		}
+
 	})
 
 	err := env.Parse(&config)

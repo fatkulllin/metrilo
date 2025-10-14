@@ -16,7 +16,8 @@ import (
 
 	config "github.com/fatkulllin/metrilo/internal/config/server"
 	"github.com/fatkulllin/metrilo/internal/encoder"
-	"github.com/fatkulllin/metrilo/internal/handlers"
+	gprchandlers "github.com/fatkulllin/metrilo/internal/handlers/gprc"
+	handlers "github.com/fatkulllin/metrilo/internal/handlers/http"
 	"github.com/fatkulllin/metrilo/internal/logger"
 	"github.com/fatkulllin/metrilo/internal/middleware/common"
 	"github.com/fatkulllin/metrilo/internal/middleware/compressor"
@@ -25,19 +26,21 @@ import (
 )
 
 type Server struct {
-	Address    string
-	handlers   *handlers.Handlers
-	config     *config.Config
-	privateKey *rsa.PrivateKey
-	httpServer *http.Server
+	Address      string
+	handlers     *handlers.Handlers
+	config       *config.Config
+	privateKey   *rsa.PrivateKey
+	httpServer   *http.Server
+	grpchandlers *gprchandlers.MetricsGRPCServer
 }
 
-func NewServer(handlers *handlers.Handlers, cfg *config.Config, privateKey *rsa.PrivateKey) *Server {
+func NewServer(httphandlers *handlers.Handlers, grpchandlers *gprchandlers.MetricsGRPCServer, cfg *config.Config, privateKey *rsa.PrivateKey) *Server {
 	logger.Log.Info("Initializing server...")
 	server := &Server{
-		handlers:   handlers,
-		config:     cfg,
-		privateKey: privateKey,
+		handlers:     httphandlers,
+		config:       cfg,
+		privateKey:   privateKey,
+		grpchandlers: grpchandlers,
 	}
 	logger.Log.Info("Server URL:", zap.String("server", cfg.Address))
 	return server
@@ -45,10 +48,13 @@ func NewServer(handlers *handlers.Handlers, cfg *config.Config, privateKey *rsa.
 
 func (server *Server) Start(ctx context.Context) error {
 
-	logger.Log.Info("Server started on...", zap.Any("server", server.config.Address))
-	_, parseTrustedCIDR, err := net.ParseCIDR(server.config.TrustedSubnet)
-	if err != nil {
-		logger.Log.Error("invalid trusted subnet", zap.Error(err))
+	var parseTrustedCIDR *net.IPNet
+	var err error
+	if server.config.TrustedSubnet != "" {
+		_, parseTrustedCIDR, err = net.ParseCIDR(server.config.TrustedSubnet)
+		if err != nil {
+			logger.Log.Error("invalid trusted subnet", zap.Error(err))
+		}
 	}
 
 	r := chi.NewRouter()

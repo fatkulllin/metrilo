@@ -22,6 +22,7 @@ type Config struct {
 	CryptoKey      string `env:"CRYPTO_KEY"`
 	ConfigFile     string
 	AgentHostIP    string `env:"AGENT_HOST_IP"`
+	GRPCAddress    string `json:"grpc_address" env:"GRPC_ADDRESS"`
 }
 
 func validateAddress(s string) error {
@@ -44,6 +45,7 @@ func LoadConfig() *Config {
 	pflag.IntVarP(&config.RateLimit, "limit", "l", 1, "send worker rate limit")
 	pflag.StringVarP(&config.CryptoKey, "crypto_key", "", "./keys/public.pem", "set public key")
 	pflag.StringVarP(&config.AgentHostIP, "agent_host_ip", "i", "", "set agent ip")
+	pflag.StringVarP(&config.GRPCAddress, "grpc_address", "g", "", "set gprc address for server")
 	pflag.Parse()
 
 	if config.ConfigFile == "" {
@@ -77,6 +79,8 @@ func LoadConfig() *Config {
 			config.WasKeySet = true
 		case "agent_host_ip":
 			config.AgentHostIP = f.Value.String()
+		case "grpc_address":
+			config.GRPCAddress = f.Value.String()
 		}
 	})
 

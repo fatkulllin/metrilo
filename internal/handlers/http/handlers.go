@@ -1,7 +1,7 @@
 // Package handlers содержит HTTP-обработчики (хендлеры) для работы с сервисом сбора метрик.
 // Хендлеры принимают и обрабатывают HTTP-запросы, валидируют входные данные,
 // вызывают соответствующие методы бизнес-логики и формируют HTTP-ответы
-package handlers
+package httphandlers
 
 import (
 	"encoding/json"
@@ -274,36 +274,9 @@ func (h *Handlers) UpdateMetrics(res http.ResponseWriter, req *http.Request) {
 
 	logger.Log.Info("parsed request", zap.Any("request", metricsSlice))
 
-	for _, v := range metricsSlice {
-		switch v.MType {
-		case metrics.Counter:
-			if v.Delta == nil {
-				errMsg := fmt.Sprintf("missing field: delta for counter %q", v.MType)
-				logger.Log.Warn("invalid request", zap.String("error", errMsg))
-				http.Error(res, errMsg, http.StatusBadRequest)
-			}
-			err := h.service.SaveCounter(v.ID, *v.Delta, req.Context())
-			if err != nil {
-				logger.Log.Error(err.Error())
-				http.Error(res, "DB connect is not available", http.StatusInternalServerError)
-				return
-			}
-		case metrics.Gauge:
-			if v.Value == nil {
-				errMsg := fmt.Sprintf("missing field: value for gauge %q", v.MType)
-				logger.Log.Warn("invalid request", zap.String("error", errMsg))
-				http.Error(res, errMsg, http.StatusBadRequest)
-			}
-			err := h.service.SaveGauge(v.ID, *v.Value, req.Context())
-			if err != nil {
-				logger.Log.Error(err.Error())
-				http.Error(res, "DB connect is not available", http.StatusInternalServerError)
-				return
-			}
-		default:
-			errMsg := fmt.Sprintf("bad request: unsupported metric type %q", v.MType)
-			logger.Log.Warn("invalid request", zap.String("error", errMsg))
-			http.Error(res, errMsg, http.StatusBadRequest)
-		}
+	if err := h.service.SaveBatch(req.Context(), metricsSlice); err != nil {
+		http.Error(res, "failed to save metrics", http.StatusInternalServerError)
+		return
 	}
+	res.WriteHeader(http.StatusOK)
 }
