@@ -135,19 +135,20 @@ func (agent *Agent) buildMetrics() []models.Metrics {
 func sendToServerGRPC(ctx context.Context, client proto.MetricsServiceClient, batch []models.Metrics) error {
 	metricsProto := make([]*proto.Metric, len(batch))
 	for i, metric := range batch {
-		protoMetric := &proto.Metric{
-			Id:   metric.ID,
-			Type: metric.MType,
-		}
+		protoMetric := &proto.Metric{}
+		protoMetric.SetId(metric.ID)
+		protoMetric.SetType(metric.MType)
 		if metric.Value != nil {
-			protoMetric.Value = *metric.Value
+			protoMetric.SetValue(*metric.Value)
 		}
 		if metric.Delta != nil {
-			protoMetric.Delta = *metric.Delta
+			protoMetric.SetDelta(*metric.Delta)
 		}
 		metricsProto[i] = protoMetric
 	}
-	_, err := client.UpdateMetrics(ctx, &proto.MetricsBatch{Metrics: metricsProto})
+	req := &proto.UpdateMetricsRequest{}
+	req.SetMetrics(metricsProto)
+	_, err := client.UpdateMetrics(ctx, req)
 	if err != nil {
 		return fmt.Errorf("failed to send metrics via gRPC: %w", err)
 	}

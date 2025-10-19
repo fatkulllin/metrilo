@@ -19,15 +19,14 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	MetricsService_UpdateMetrics_FullMethodName = "/metrics.MetricsService/UpdateMetrics"
+	MetricsService_UpdateMetrics_FullMethodName = "/metrilo.MetricsService/UpdateMetrics"
 )
 
 // MetricsServiceClient is the client API for MetricsService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type MetricsServiceClient interface {
-	// Аналог HTTP POST /updates/
-	UpdateMetrics(ctx context.Context, in *MetricsBatch, opts ...grpc.CallOption) (*Empty, error)
+	UpdateMetrics(ctx context.Context, in *UpdateMetricsRequest, opts ...grpc.CallOption) (*UpdateMetricsResponse, error)
 }
 
 type metricsServiceClient struct {
@@ -38,9 +37,9 @@ func NewMetricsServiceClient(cc grpc.ClientConnInterface) MetricsServiceClient {
 	return &metricsServiceClient{cc}
 }
 
-func (c *metricsServiceClient) UpdateMetrics(ctx context.Context, in *MetricsBatch, opts ...grpc.CallOption) (*Empty, error) {
+func (c *metricsServiceClient) UpdateMetrics(ctx context.Context, in *UpdateMetricsRequest, opts ...grpc.CallOption) (*UpdateMetricsResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(Empty)
+	out := new(UpdateMetricsResponse)
 	err := c.cc.Invoke(ctx, MetricsService_UpdateMetrics_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -52,8 +51,7 @@ func (c *metricsServiceClient) UpdateMetrics(ctx context.Context, in *MetricsBat
 // All implementations must embed UnimplementedMetricsServiceServer
 // for forward compatibility.
 type MetricsServiceServer interface {
-	// Аналог HTTP POST /updates/
-	UpdateMetrics(context.Context, *MetricsBatch) (*Empty, error)
+	UpdateMetrics(context.Context, *UpdateMetricsRequest) (*UpdateMetricsResponse, error)
 	mustEmbedUnimplementedMetricsServiceServer()
 }
 
@@ -64,7 +62,7 @@ type MetricsServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedMetricsServiceServer struct{}
 
-func (UnimplementedMetricsServiceServer) UpdateMetrics(context.Context, *MetricsBatch) (*Empty, error) {
+func (UnimplementedMetricsServiceServer) UpdateMetrics(context.Context, *UpdateMetricsRequest) (*UpdateMetricsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateMetrics not implemented")
 }
 func (UnimplementedMetricsServiceServer) mustEmbedUnimplementedMetricsServiceServer() {}
@@ -89,7 +87,7 @@ func RegisterMetricsServiceServer(s grpc.ServiceRegistrar, srv MetricsServiceSer
 }
 
 func _MetricsService_UpdateMetrics_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(MetricsBatch)
+	in := new(UpdateMetricsRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -101,7 +99,7 @@ func _MetricsService_UpdateMetrics_Handler(srv interface{}, ctx context.Context,
 		FullMethod: MetricsService_UpdateMetrics_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MetricsServiceServer).UpdateMetrics(ctx, req.(*MetricsBatch))
+		return srv.(MetricsServiceServer).UpdateMetrics(ctx, req.(*UpdateMetricsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -110,7 +108,7 @@ func _MetricsService_UpdateMetrics_Handler(srv interface{}, ctx context.Context,
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var MetricsService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "metrics.MetricsService",
+	ServiceName: "metrilo.MetricsService",
 	HandlerType: (*MetricsServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{

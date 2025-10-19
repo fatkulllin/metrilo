@@ -1,8 +1,10 @@
-syntax = "proto3";
+edition = "2023";
 
-package metrics;
+package metrilo;
 
-option go_package = "github.com/fatkulllin/metrilo";
+option go_package = "github.com/fatkulllin/metrilo/pkg/proto;metrilo";
+import "google/protobuf/go_features.proto";
+option features.(pb.go).api_level = API_OPAQUE;
 
 message Metric {
   string id = 1;        // имя метрики
@@ -11,13 +13,12 @@ message Metric {
   int64 delta = 4;      // для counter
 }
 
-message MetricsBatch {
-  repeated Metric metrics = 1;
+message UpdateMetricsRequest {
+  repeated Metric metrics = 1 [lazy = true];
 }
 
-message Empty {}
+message UpdateMetricsResponse {}
 
 service MetricsService {
-  // Аналог HTTP POST /updates/
-  rpc UpdateMetrics (MetricsBatch) returns (Empty);
+  rpc UpdateMetrics (UpdateMetricsRequest) returns (UpdateMetricsResponse);
 }

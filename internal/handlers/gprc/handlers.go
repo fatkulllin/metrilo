@@ -21,24 +21,24 @@ func NewMetricsGRPCServer(service *service.MetricsService) *MetricsGRPCServer {
 	return &MetricsGRPCServer{service: service}
 }
 
-func (m *MetricsGRPCServer) UpdateMetrics(ctx context.Context, in *proto.MetricsBatch) (*proto.Empty, error) {
+func (m *MetricsGRPCServer) UpdateMetrics(ctx context.Context, in *proto.UpdateMetricsRequest) (*proto.UpdateMetricsResponse, error) {
 	logger.Log.Info("Received gRPC UpdateMetrics request")
-	if in == nil || len(in.Metrics) == 0 {
+	if in == nil || len(in.GetMetrics()) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "empty metrics batch")
 	}
-	metricsSlice := make([]models.Metrics, len(in.Metrics))
-	for i, metric := range in.Metrics {
+	metricsSlice := make([]models.Metrics, len(in.GetMetrics()))
+	for i, metric := range in.GetMetrics() {
 		mm := models.Metrics{
-			ID:    metric.Id,
-			MType: metric.Type,
+			ID:    metric.GetId(),
+			MType: metric.GetType(),
 		}
 
-		switch metric.Type {
+		switch metric.GetType() {
 		case "gauge":
-			value := metric.Value
+			value := metric.GetValue()
 			mm.Value = &value
 		case "counter":
-			delta := metric.Delta
+			delta := metric.GetDelta()
 			mm.Delta = &delta
 		}
 
@@ -49,5 +49,5 @@ func (m *MetricsGRPCServer) UpdateMetrics(ctx context.Context, in *proto.Metrics
 		return nil, status.Errorf(codes.Internal, "failed to save metrics: %v", err)
 	}
 	logger.Log.Info("Metrics batch saved successfully via gRPC")
-	return &proto.Empty{}, nil
+	return &proto.UpdateMetricsResponse{}, nil
 }

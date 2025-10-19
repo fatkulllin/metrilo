@@ -3,9 +3,9 @@ package grpcmw
 import (
 	"context"
 	"net"
-	"strings"
 
 	"github.com/fatkulllin/metrilo/internal/logger"
+	"github.com/fatkulllin/metrilo/internal/trusted"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -20,31 +20,14 @@ func TrustedSubnetInterceptor(trustedNet *net.IPNet) grpc.UnaryServerInterceptor
 		info *grpc.UnaryServerInfo,
 		handler grpc.UnaryHandler,
 	) (any, error) {
-		if trustedNet == nil {
-			return handler(ctx, req)
-		}
 
-		md, ok := metadata.FromIncomingContext(ctx)
-		if !ok {
-			logger.Log.Warn("no metadata in context")
-			return nil, status.Error(codes.PermissionDenied, "missing metadata")
-		}
+		md, _ := metadata.FromIncomingContext(ctx)
 
 		values := md.Get("x-real-ip")
-		if len(values) == 0 {
-			return nil, status.Error(codes.PermissionDenied, "missing X-Real-IP header")
-		}
 
-		ipStr := strings.TrimSpace(values[0])
-		ip := net.ParseIP(ipStr)
-		if ip == nil {
-			logger.Log.Warn("invalid X-Real-IP", zap.String("ip", ipStr))
-			return nil, status.Error(codes.PermissionDenied, "invalid IP address")
-		}
-
-		if !trustedNet.Contains(ip) {
-			logger.Log.Warn("unauthorized IP", zap.String("ip", ipStr))
-			return nil, status.Error(codes.PermissionDenied, "IP not allowed")
+		if err := trusted.ValidateIP(values[0], trustedNet); err != nil {
+			logger.Log.Warn("unauthorized IP", zap.String("IP", values[0]))
+			return nil, status.Error(codes.PermissionDenied, err.Error())
 		}
 
 		return handler(ctx, req)
