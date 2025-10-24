@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"net/http"
 	"sync"
 
@@ -41,6 +42,7 @@ func (s *MetricsService) SendToServerWithContext(
 	reqBody []byte,
 	wasKeySet bool,
 	key []byte,
+	hostIP string,
 ) error {
 	req, err := http.NewRequestWithContext(ctx, method, endpoint, bytes.NewBuffer(reqBody))
 	if err != nil {
@@ -48,7 +50,7 @@ func (s *MetricsService) SendToServerWithContext(
 	}
 	req.Header.Add("Content-Encoding", "gzip")
 	req.Header.Add("Content-Type", "application/json")
-
+	req.Header.Add("X-Real-IP", hostIP)
 	// подпись HMAC
 	secretkey := []byte("secretkey")
 	h := hmac.New(sha256.New, secretkey)
@@ -61,9 +63,9 @@ func (s *MetricsService) SendToServerWithContext(
 		return fmt.Errorf("error sending request: %w", err)
 	}
 	defer resp.Body.Close()
-
+	body, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("server returned status: %d", resp.StatusCode)
+		return fmt.Errorf("server returned status: %d, body: %s", resp.StatusCode, body)
 	}
 	return nil
 }

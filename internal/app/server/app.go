@@ -11,7 +11,8 @@ import (
 
 	config "github.com/fatkulllin/metrilo/internal/config/server"
 	"github.com/fatkulllin/metrilo/internal/database"
-	"github.com/fatkulllin/metrilo/internal/handlers"
+	gprchandlers "github.com/fatkulllin/metrilo/internal/handlers/gprc"
+	httphandlers "github.com/fatkulllin/metrilo/internal/handlers/http"
 	"github.com/fatkulllin/metrilo/internal/keysmanager"
 	"github.com/fatkulllin/metrilo/internal/logger"
 	"github.com/fatkulllin/metrilo/internal/retry"
@@ -24,7 +25,7 @@ import (
 type App struct {
 	memStore *storage.MemStorage
 	service  *service.MetricsService
-	handlers *handlers.Handlers
+	handlers *httphandlers.Handlers
 	server   *server.Server
 	ticker   *ticker.Ticker
 	db       *database.Database
@@ -51,8 +52,9 @@ func NewApp(cfg *config.Config) *App {
 	}
 
 	service := service.NewMetricsService(memStore, cfg, db)
-	handlers := handlers.NewHandlers(service)
-	server := server.NewServer(handlers, cfg, privateKey)
+	handlers := httphandlers.NewHandlers(service)
+	grpcHandlers := gprchandlers.NewMetricsGRPCServer(service)
+	server := server.NewServer(handlers, grpcHandlers, cfg, privateKey)
 
 	var tick *ticker.Ticker
 
@@ -96,7 +98,7 @@ func NewApp(cfg *config.Config) *App {
 
 func (a *App) Run(ctx context.Context) error {
 	var wg sync.WaitGroup
-	errCh := make(chan error, 2)
+	errCh := make(chan error, 3)
 	wg.Add(1)
 
 	go func() {
@@ -114,6 +116,14 @@ func (a *App) Run(ctx context.Context) error {
 			a.ticker.Start(ctx)
 		}()
 	}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if err := a.server.StartGRPC(ctx); err != nil && err != http.ErrServerClosed {
+			logger.Log.Error("server exited with error", zap.Error(err))
+			errCh <- err
+		}
+	}()
 
 	select {
 	case <-ctx.Done():
